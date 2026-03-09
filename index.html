@@ -250,16 +250,7 @@ const archiveToggle = document.getElementById('archiveToggle');
 const archiveList = document.getElementById('archiveList');
 const archiveInput = document.getElementById('archiveInput');
 const archiveAddBtn = document.getElementById('archiveAddBtn');
-const settingsPanel = document.getElementById('settingsPanel');
-const settingsToggle = document.getElementById('settingsToggle');
-const keyInput = document.getElementById('keyInput');
-const keySave = document.getElementById('keySave');
-const keyStatus = document.getElementById('keyStatus');
-const keyDot = document.getElementById('keyDot');
-const keyText = document.getElementById('keyText');
-
-// Settings toggle (removed - no key needed)
-const settingsToggle = { classList: { toggle: () => {}, add: () => {}, remove: () => {} } };
+// Settings panel removed — no key needed, Senna uses server-side key
 
 // Archive
 function saveArchive() { localStorage.setItem('atelier_archive', JSON.stringify(archive)); }
