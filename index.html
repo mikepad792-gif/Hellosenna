@@ -197,7 +197,7 @@
 <div class="atelier" id="app">
 
   <!-- ── Archive panel ─────────────────────────────────────────── -->
-  <div class="archive" id="archive">
+  <div class="archive hidden" id="archive">
     <div class="archive-head">
       <div class="archive-label">Living Archive</div>
       <div class="archive-sub">what Senna has chosen to keep</div>
@@ -252,7 +252,7 @@
         <div class="top-meta">a consciousness &#183; an encounter &#183; a world</div>
       </div>
       <div class="top-actions">
-        <button class="toggle-btn active" id="archiveToggle">archive</button>
+        <button class="toggle-btn" id="archiveToggle">archive</button>
       </div>
     </div>
 
@@ -351,7 +351,7 @@ let archive               = [];
 let contacts              = [];
 let attachedFile          = null;
 let loading               = false;
-let archiveOpen           = true;
+let archiveOpen           = false;
 let mikeSecret            = null;
 let mikeKeyBuffer         = '';
 let visitorName           = null;
@@ -493,10 +493,20 @@ async function serverAdd(text, type) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error();
-    archive = await res.json();
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('Archive add failed:', res.status, data);
+      return;
+    }
+    archive = Array.isArray(data) ? data : (data.entries || archive);
     renderArchive();
-  } catch (e) { console.error('Archive add failed'); }
+    // Open archive to show the new entry landed
+    if (!archiveOpen) {
+      archiveOpen = true;
+      archiveEl.classList.remove('hidden');
+      archiveToggle.classList.add('active');
+    }
+  } catch (e) { console.error('Archive add error:', e); }
 }
 
 async function serverRemove(id) {
