@@ -1,37 +1,16 @@
+
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*' } };
-  }
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
 
-  try {
-    const body = JSON.parse(event.body);
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    });
+  const body = JSON.parse(event.body);
+  const userMessage = body.message;
 
-    const data = await response.json();
-    return {
-      statusCode: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(data),
-    };
-  } catch (e) {
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: { message: e.message } }),
-    };
-  }
+  const response = {
+    reply: "Senna received: " + userMessage,
+    note: "Retrieval + reflection systems will plug in here."
+  };
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response)
+  };
 };
