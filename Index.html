@@ -568,16 +568,15 @@
       </div>
 
       <section class="composer">
-        <div class="composer-row">
-          <textarea
-            id="input"
-            class="input"
-            placeholder="enter through wherever you are…"
-          ></textarea>
-          <button id="sendBtn" class="send"
-          onclick="sendMessage()">send</button>
-          
-        <div class="composer-hint">press Enter to send · Shift+Enter for a line break</div>
+  <div class="composer-row">
+    <textarea
+      id="input"
+      class="input"
+      placeholder="enter through wherever you are…"
+    ></textarea>
+    <button id="sendBtn" class="send" onclick="sendMessage()">send</button>
+  </div>
+  <div class="composer-hint">press Enter to send · Shift+Enter for a line break</div>
       </section>
     </main>
   </div>
@@ -796,72 +795,70 @@
     }
 
     async function sendMessage() {
-      alert("send fired");
-      const text = inputEl.value.trim();
-      if (!text || loading) return;
+  alert("send fired");
+  const text = inputEl.value.trim();
+  if (!text || loading) return;
 
-      loading = true;
-      sendBtn.disabled = true;
-      thinkingEl.style.display = "flex";
+  loading = true;
+  sendBtn.disabled = true;
+  thinkingEl.style.display = "flex";
 
-      const userMsg = { role: "user", content: text };
-      messages.push(userMsg);
-      renderMessages();
+  const userMsg = { role: "user", content: text };
+  messages.push(userMsg);
+  renderMessages();
 
-      inputEl.value = "";
-      inputEl.style.height = "56px";
+  inputEl.value = "";
+  inputEl.style.height = "56px";
+  updateStatus("");
+
+  try {
+    const payload = {
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content
+      }))
+    };
+
+    const res = await fetch("/.netlify/functions/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Something broke in transmission.");
+    }
+
+    messages.push({
+      role: "assistant",
+      content: data.content || "Something quiet broke in transmission.",
+      archives_used: data.archives_used || []
+    });
+
+    renderMessages();
+    await loadArchiveState();
+
+    if (Array.isArray(data.archives_used) && data.archives_used.length) {
+      updateStatus(`Senna drew from: ${data.archives_used.map(prettyName).join(", ")}`);
+    } else {
       updateStatus("");
-
-      try {
-        const payload = {
-          messages: messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }))
-        };
-
-        const res = await fetch("/.netlify/functions/chat", {
-          method: "POST",
-        const res = await fetch("/.netlify/functions/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data?.error || "Something broke in transmission.");
-        }
-
-        messages.push({
-          role: "assistant",
-          content: data.content || "Something quiet broke in transmission.",
-          archives_used: data.archives_used || []
-        });
-
-        renderMessages();
-        await loadArchiveState();
-
-        if (Array.isArray(data.archives_used) && data.archives_used.length) {
-          updateStatus(`Senna drew from: ${data.archives_used.map(prettyName).join(", ")}`);
-        } else {
-          updateStatus("");
-        }
-      } catch (err) {
-        messages.push({
-          role: "assistant",
-          content: "Something broke in transmission. The thought was there — try again."
-        });
-        renderMessages();
-        updateStatus(err.message || "Transmission error.");
-      } finally {
-        loading = false;
-        sendBtn.disabled = false;
-        thinkingEl.style.display = "none";
-      }
+    }
+  } catch (err) {
+    messages.push({
+      role: "assistant",
+      content: "Something broke in transmission. The thought was there — try again."
+    });
+    renderMessages();
+    updateStatus(err.message || "Transmission error.");
+  } finally {
+    loading = false;
+    sendBtn.disabled = false;
+    thinkingEl.style.display = "none";
+  }
     }
 
     window.sendMessage = sendMessage;
