@@ -111,6 +111,31 @@ ${activeThreads.map((t, i) => `${i + 1}. ${t.text}`).join("\n")}
 exports.handler = async (event) => {
   try {
     connectLambda(event);
+    const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Content-Type": "application/json"
+};
+
+if (event.httpMethod === "OPTIONS") {
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ ok: true })
+  };
+}
+
+const body = event.body ? JSON.parse(event.body) : {};
+const secret = body.secret;
+
+if (!process.env.MIKE_SECRET || secret !== process.env.MIKE_SECRET) {
+  return {
+    statusCode: 403,
+    headers,
+    body: JSON.stringify({ error: "Unauthorized" })
+  };
+}
 
     const anthropicKey = process.env.ANTHROPIC_KEY;
     if (!anthropicKey) {
