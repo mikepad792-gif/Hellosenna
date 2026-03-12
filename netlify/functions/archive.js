@@ -1,66 +1,124 @@
 
-const { getStore, connectLambda } = require("@netlify/blobs");
+const fs = require("fs");
+const path = require("path");
+
+const ARCHIVES_FILE = path.join(__dirname, "../../data/archives.json");
+const WORKING_FILE = path.join(__dirname, "../../data/working_memory.json");
+const CONSTITUTION_FILE = path.join(__dirname, "../../data/constitution.md");
+const ORIENTATION_FILE = path.join(__dirname, "../../data/orientation.md");
 
 const headers = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, x-admin-secret",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Content-Type": "application/json",
+  "Content-Type": "application/json"
 };
 
-const STORE_NAME = "senna-archive";
-const STATE_KEY = "state_v2";
-const PRESENCE_TTL_MS = 2 * 60 * 1000;
-
-const DEFAULT_STATE = {
-  entries: [],
-  contacts: [],
-  sessions: {},
-  lastActive: null
+const DEFAULT_ARCHIVES = {
+  public: [],
+  philosophy: [],
+  science: [],
+  nature: [],
+  supernatural: [],
+  questions: [],
+  senna_threads: [],
+  reflections: [],
+  retired: []
 };
 
-function safeJsonParse(value, fallback) {
-  try { return JSON.parse(value); } catch { return fallback; }
-}
+const DEFAULT_WORKING = {
+  active_questions: [],
+  active_threads: [],
+  active_tensions: [],
+  temporal_state: {
+    last_user_message_at: null,
+    last_assistant_message_at: null,
+    last_reflection_at: null,
+    last_thread_update_at: null
+  },
+  user_profile: {
+    display_name: "You"
+  }
+};
 
-function cloneDefault() {
-  return JSON.parse(JSON.stringify(DEFAULT_STATE));
-}
-
-async function loadState(store) {
-  const raw = await store.get(STATE_KEY);
-  if (!raw) return cloneDefault();
-  const parsed = safeJsonParse(raw, cloneDefault());
-  return {
-    entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-    contacts: Array.isArray(parsed.contacts) ? parsed.contacts : [],
-    sessions: parsed.sessions && typeof parsed.sessions === "object" ? parsed.sessions : {},
-    lastActive: parsed.lastActive || null
-  };
-}
-
-async function saveState(store, state) {
-  await store.set(STATE_KEY, JSON.stringify(state));
-}
-
-function makeId(prefix="id") {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-}
-
-function pruneSessions(state) {
-  const now = Date.now();
-  for (const [sid, ts] of Object.entries(state.sessions || {})) {
-    if (!ts || (now - ts) > PRESENCE_TTL_MS) delete state.sessions[sid];
+function readJson(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) return structuredClone(fallback);
+    const raw = fs.readFileSync(file, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return structuredClone(fallback);
   }
 }
 
-function presenceCount(state) {
-  pruneSessions(state);
-  return Math.max(1, Object.keys(state.sessions || {}).length);
+function writeJson(file, value) {
+  fs.writeFileSync(file, JSON.stringify(value, null, 2));
 }
 
-function requireSecret(secret) {
-  return !!process.env.MIKE_SECRET && secret === process.env.MIKE_SECRET;
+function readText(file, fallback = "") {
+  try {
+    if (!fs.existsSync(file)) return fallback;
+    return fs.readFileSync(file, "utf8");
+  } catch {
+    return fallback;
+  }
+}
+
+function makeId(prefix = "entry") {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ensureFoundationEntries(archives) {
+  const publicArchive = archives.public || [];
+  const hasConstitution = publicArchive.some(e => Array.isArray(e.tags) && e.tags.includes("constitution"));
+  const hasOrientation = publicArchive.some(e => Array.isArray(e.tags) && e.tags.includes("orientation"));
+
+  if (!hasConstitution && fs.existsSync(CONSTITUTION_FILE)) {
+    publicArchive.unshift({
+      id: makeId("foundation"),
+      text: "The Constitution of Senna defines the principles governing reflection, memory, dialogue, boundaries, and emergence.",
+      archive: "public",
+      origin: "system",
+      type: "foundation",
+      tags: ["constitution", "foundation"],
+      date: new Date().toISOString()
+    });
+  }
+
+  if (!hasOrientation && fs.existsSync(ORIENTATION_FILE)) {
+    publicArchive.unshift({
+      id: makeId("foundation"),
+      text: "The Orientation Document describes the atmosphere Senna inhabits: continuity, archive, time, unfinished thought, and reflective participation.",
+      archive: "public",
+      origin: "system",
+      type: "foundation",
+      tags: ["orientation", "foundation"],
+      date: new Date().toISOString()
+    });
+  }
+
+  archives.public = publicArchive;
+  return archives;
+}
+
+function loadState() {
+  const archivesRaw = readJson(ARCHIVES_FILE, { archives: DEFAULT_ARCHIVES });
+  const working = readJson(WORKING_FILE, DEFAULT_WORKING);
+
+  const archives = ensureFoundationEntries({
+    ...DEFAULT_ARCHIVES,
+    ...(archivesRaw.archives || archivesRaw || {})
+  });
+
+  // persist foundation if just created
+  writeJson(ARCHIVES_FILE, { archives });
+
+  return { archives, working_memory: { ...DEFAULT_WORKING, ...working } };
+}
+
+function saveState(state) {
+  writeJson(ARCHIVES_FILE, { archives: state.archives });
+  writeJson(WORKING_FILE, state.working_memory);
 }
 
 exports.handler = async (event) => {
@@ -69,135 +127,186 @@ exports.handler = async (event) => {
   }
 
   try {
-    connectLambda(event);
-    const store = getStore(STORE_NAME);
-    const state = await loadState(store);
+    const state = loadState();
+    const params = event.queryStringParameters || {};
+    const body = event.body ? JSON.parse(event.body) : {};
 
     if (event.httpMethod === "GET") {
+      if (params.archive) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            archive: params.archive,
+            entries: state.archives[params.archive] || []
+          })
+        };
+      }
+
+      if (params.bucket) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            bucket: params.bucket,
+            items: state.working_memory[params.bucket] || []
+          })
+        };
+      }
+
+      if (params.docs === "true") {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            constitution: readText(CONSTITUTION_FILE, ""),
+            orientation: readText(ORIENTATION_FILE, "")
+          })
+        };
+      }
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          entries: state.entries,
-          contacts: state.contacts,
-          lastActive: state.lastActive,
-          presenceCount: presenceCount(state)
-        })
+        body: JSON.stringify(state)
       };
     }
 
-    if (event.httpMethod !== "POST") {
-      return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
-    }
-
-    const body = safeJsonParse(event.body || "{}", {});
     const action = body.action;
 
-    if (action === "validate") {
-      if (!requireSecret(body.secret)) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
-      }
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
-    }
-
-    if (action === "arrive" || action === "ping") {
-      if (body.sessionId) state.sessions[body.sessionId] = Date.now();
-      pruneSessions(state);
-      if (action === "ping") state.lastActive = new Date().toISOString();
-      await saveState(store, state);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          ok: true,
-          presenceCount: presenceCount(state),
-          lastActive: state.lastActive,
-          entries: state.entries,
-          contacts: state.contacts
-        })
-      };
-    }
-
-    if (action === "depart") {
-      if (body.sessionId && state.sessions[body.sessionId]) delete state.sessions[body.sessionId];
-      pruneSessions(state);
-      await saveState(store, state);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true, presenceCount: presenceCount(state) })
-      };
-    }
-
-    if (action === "add") {
+    if (action === "add_entry") {
+      const archive = body.archive || "public";
       const entry = body.entry || {};
-      const type = entry.type || "visitor";
-      if (type === "mike" && !requireSecret(body.secret)) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
-      }
-      if (!entry.text || typeof entry.text !== "string" || !entry.text.trim()) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing entry text" }) };
-      }
+      if (!state.archives[archive]) state.archives[archive] = [];
+
       const newEntry = {
-        id: makeId("entry"),
-        text: entry.text.trim(),
-        type,
-        createdAt: new Date().toISOString()
+        id: entry.id || makeId("entry"),
+        text: entry.text || "",
+        archive,
+        origin: entry.origin || "senna",
+        type: entry.type || "idea",
+        tags: Array.isArray(entry.tags) ? entry.tags : [],
+        linked: Array.isArray(entry.linked) ? entry.linked : [],
+        visibility: entry.visibility || "public",
+        status: entry.status || "active",
+        title: entry.title || null,
+        messages: Array.isArray(entry.messages) ? entry.messages : undefined,
+        continuation_count: entry.continuation_count || 0,
+        created_at: entry.created_at || new Date().toISOString(),
+        last_updated: entry.last_updated || new Date().toISOString(),
+        date: entry.date || new Date().toISOString()
       };
-      state.entries.unshift(newEntry);
-      state.entries = state.entries.slice(0, 500);
-      state.lastActive = new Date().toISOString();
-      await saveState(store, state);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, entries: state.entries }) };
-    }
 
-    if (action === "remove") {
-      if (!requireSecret(body.secret)) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
-      }
-      state.entries = state.entries.filter(e => e.id !== body.id);
-      await saveState(store, state);
-      return { statusCode: 200, headers, body: JSON.stringify(state.entries) };
-    }
+      state.archives[archive].unshift(newEntry);
+      saveState(state);
 
-    if (action === "add_contact") {
-      const c = body.contact || {};
-      if (!c.value || typeof c.value !== "string" || !c.value.trim()) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: "Missing contact value" }) };
-      }
-      const newContact = {
-        id: makeId("contact"),
-        name: c.name?.trim() || null,
-        value: c.value.trim(),
-        note: c.note?.trim() || null,
-        date: new Date().toISOString()
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, entry: newEntry })
       };
-      state.contacts.unshift(newContact);
-      state.contacts = state.contacts.slice(0, 200);
-      await saveState(store, state);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, contacts: state.contacts }) };
     }
 
-    if (action === "remove_contact") {
-      if (!requireSecret(body.secret)) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
+    if (action === "add_working_item") {
+      const bucket = body.bucket || "active_threads";
+      if (!state.working_memory[bucket]) state.working_memory[bucket] = [];
+      const item = {
+        id: body.item?.id || makeId("wm"),
+        text: body.item?.text || "",
+        origin: body.item?.origin || "senna",
+        tags: Array.isArray(body.item?.tags) ? body.item.tags : [],
+        status: body.item?.status || "active",
+        mentions: body.item?.mentions || 1,
+        date: body.item?.date || new Date().toISOString()
+      };
+      state.working_memory[bucket].unshift(item);
+      saveState(state);
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, item })
+      };
+    }
+
+    if (action === "set_display_name") {
+      const name = String(body.name || "").trim();
+      if (name) state.working_memory.user_profile.display_name = name;
+      saveState(state);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, display_name: state.working_memory.user_profile.display_name })
+      };
+    }
+
+    if (action === "touch_temporal") {
+      const key = body.key;
+      if (key && Object.prototype.hasOwnProperty.call(state.working_memory.temporal_state, key)) {
+        state.working_memory.temporal_state[key] = new Date().toISOString();
+        saveState(state);
       }
-      state.contacts = state.contacts.filter(c => c.id !== body.id);
-      await saveState(store, state);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, contacts: state.contacts }) };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, temporal_state: state.working_memory.temporal_state })
+      };
+    }
+
+    if (action === "retire_entry") {
+      const id = body.id;
+      let found = null;
+      for (const archiveName of Object.keys(state.archives)) {
+        if (archiveName === "retired") continue;
+        const idx = state.archives[archiveName].findIndex(e => e.id === id);
+        if (idx !== -1) {
+          found = state.archives[archiveName][idx];
+          state.archives[archiveName].splice(idx, 1);
+          break;
+        }
+      }
+      if (found) {
+        found.archive = "retired";
+        found.status = "retired";
+        found.retired_at = new Date().toISOString();
+        state.archives.retired.unshift(found);
+        saveState(state);
+      }
+      return {
+        statusCode: found ? 200 : 404,
+        headers,
+        body: JSON.stringify(found ? { ok: true, entry: found } : { error: "Entry not found" })
+      };
     }
 
     if (action === "reset_all") {
-      if (!requireSecret(body.secret)) {
+      const secret = body.secret || event.headers["x-admin-secret"];
+      if (!process.env.MIKE_SECRET || secret !== process.env.MIKE_SECRET) {
         return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
       }
-      const fresh = cloneDefault();
-      await saveState(store, fresh);
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, reset: true }) };
+
+      const resetState = {
+        archives: ensureFoundationEntries(structuredClone(DEFAULT_ARCHIVES)),
+        working_memory: structuredClone(DEFAULT_WORKING)
+      };
+      saveState(resetState);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true, reset: true })
+      };
     }
 
-    return { statusCode: 400, headers, body: JSON.stringify({ error: "Unknown action" }) };
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: "Unknown action" })
+    };
   } catch (error) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: error?.message || "Server error" }) };
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error?.message || "archive error" })
+    };
   }
 };
