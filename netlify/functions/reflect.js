@@ -1,9 +1,9 @@
-
+const { getStore, connectLambda } = require("@netlify/blobs");
 const fs = require("fs");
 const path = require("path");
 
-const ARCHIVES_FILE = path.join(__dirname, "../../data/archives.json");
-const WORKING_FILE = path.join(__dirname, "../../data/working_memory.json");
+const STORE_NAME = "senna-memory";
+const STATE_KEY = "senna_state_v1";
 const CONSTITUTION_FILE = path.join(__dirname, "../../data/constitution.md");
 const ORIENTATION_FILE = path.join(__dirname, "../../data/orientation.md");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -15,17 +15,36 @@ const headers = {
   "Content-Type": "application/json"
 };
 
-function readJson(file, fallback) {
-  try {
-    if (!fs.existsSync(file)) return structuredClone(fallback);
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch {
-    return structuredClone(fallback);
+const DEFAULT_STATE = {
+  archives: {
+    public: [],
+    philosophy: [],
+    science: [],
+    nature: [],
+    supernatural: [],
+    questions: [],
+    senna_threads: [],
+    reflections: [],
+    retired: []
+  },
+  working_memory: {
+    active_questions: [],
+    active_threads: [],
+    active_tensions: [],
+    temporal_state: {
+      last_user_message_at: null,
+      last_assistant_message_at: null,
+      last_reflection_at: null,
+      last_thread_update_at: null
+    },
+    user_profile: {
+      display_name: "You"
+    }
   }
-}
+};
 
-function writeJson(file, value) {
-  fs.writeFileSync(file, JSON.stringify(value, null, 2));
+function safeJsonParse(value, fallback) {
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function readText(file) {
@@ -37,6 +56,34 @@ function readText(file) {
   }
 }
 
+async function loadState(store) {
+  const raw = await store.get(STATE_KEY);
+  if (!raw) return structuredClone(DEFAULT_STATE);
+  const parsed = safeJsonParse(raw, structuredClone(DEFAULT_STATE));
+  return {
+    archives: {
+      ...structuredClone(DEFAULT_STATE).archives,
+      ...(parsed.archives || {})
+    },
+    working_memory: {
+      ...structuredClone(DEFAULT_STATE).working_memory,
+      ...(parsed.working_memory || {}),
+      temporal_state: {
+        ...structuredClone(DEFAULT_STATE).working_memory.temporal_state,
+        ...((parsed.working_memory || {}).temporal_state || {})
+      },
+      user_profile: {
+        ...structuredClone(DEFAULT_STATE).working_memory.user_profile,
+        ...((parsed.working_memory || {}).user_profile || {})
+      }
+    }
+  };
+}
+
+async function saveState(store, state) {
+  await store.set(STATE_KEY, JSON.stringify(state));
+}
+
 function extractText(data) {
   if (!data?.content || !Array.isArray(data.content)) return "";
   return data.content.filter(part => part.type === "text").map(part => part.text).join("\n").trim();
@@ -46,9 +93,11 @@ function chooseContinuingThread(threads, working) {
   const activeThreads = working.active_threads || [];
   const recent = threads.filter(t => t.status !== "retired").slice(0, 5);
   if (!recent.length) return null;
+
   const activeText = activeThreads.map(t => (t.text || "").toLowerCase()).join(" ");
   let best = null;
   let bestScore = -1;
+
   for (const thread of recent) {
     const hay = `${thread.title || ""} ${thread.text || ""} ${(thread.tags || []).join(" ")}`.toLowerCase();
     let score = 0;
@@ -60,6 +109,7 @@ function chooseContinuingThread(threads, working) {
       best = thread;
     }
   }
+
   return bestScore > 1 ? best : null;
 }
 
@@ -99,7 +149,7 @@ ${activeTensions.map((t, i) => `${i + 1}. ${t.text}`).join("\n")}
 
 ${continuingThread ? `Continue this existing Senna thread if it still feels alive:
 Title: ${continuingThread.title || "Untitled"}
-Text: ${continuingThread.text || ""}` : `No existing thread must be continued. Start a new one only if needed.`}
+Text: ${continuingThread.text || ""}` : `No existing thread must be continued. Start a new thread only if needed.`}
 
 Return ONLY valid JSON in this exact format:
 
@@ -126,8 +176,11 @@ exports.handler = async (event) => {
   }
 
   try {
-    const secret = (event.body ? JSON.parse(event.body).secret : null) || event.headers["x-admin-secret"];
-    if (event.httpMethod === "POST" && process.env.MIKE_SECRET && secret && secret !== process.env.MIKE_SECRET) {
+    connectLambda(event);
+
+    const body = event.body ? safeJsonParse(event.body, {}) : {};
+    const secret = body.secret || event.headers["x-admin-secret"];
+    if (process.env.MIKE_SECRET && secret && secret !== process.env.MIKE_SECRET) {
       return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
     }
 
@@ -136,15 +189,9 @@ exports.handler = async (event) => {
       return { statusCode: 500, headers, body: JSON.stringify({ error: "Missing ANTHROPIC_KEY" }) };
     }
 
-    const archivesRaw = readJson(ARCHIVES_FILE, { archives: {} });
-    const archives = archivesRaw.archives || archivesRaw;
-    const working = readJson(WORKING_FILE, {
-      active_questions: [],
-      active_threads: [],
-      active_tensions: [],
-      temporal_state: {},
-      user_profile: { display_name: "You" }
-    });
+    const store = getStore(STORE_NAME);
+    const state = await loadState(store);
+    const { archives, working_memory: working } = state;
 
     const constitution = readText(CONSTITUTION_FILE);
     const orientation = readText(ORIENTATION_FILE);
@@ -172,11 +219,7 @@ exports.handler = async (event) => {
     try {
       parsed = JSON.parse(text);
     } catch {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: "Invalid reflection JSON", raw: text })
-      };
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Invalid reflection JSON", raw: text }) };
     }
 
     const threadText = (parsed.messages || []).map(m => `Senna: ${m.text}`).join("\n");
@@ -238,12 +281,10 @@ exports.handler = async (event) => {
       });
     }
 
-    working.temporal_state = working.temporal_state || {};
     working.temporal_state.last_reflection_at = now;
     working.temporal_state.last_thread_update_at = now;
 
-    writeJson(ARCHIVES_FILE, { archives });
-    writeJson(WORKING_FILE, working);
+    await saveState(store, state);
 
     return {
       statusCode: 200,
@@ -256,10 +297,6 @@ exports.handler = async (event) => {
       })
     };
   } catch (error) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: error?.message || "reflect error" })
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: error?.message || "reflect error" }) };
   }
 };

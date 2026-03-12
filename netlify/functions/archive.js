@@ -1,9 +1,10 @@
-
+const { getStore, connectLambda } = require("@netlify/blobs");
 const fs = require("fs");
 const path = require("path");
 
-const ARCHIVES_FILE = path.join(__dirname, "../../data/archives.json");
-const WORKING_FILE = path.join(__dirname, "../../data/working_memory.json");
+const STORE_NAME = "senna-memory";
+const STATE_KEY = "senna_state_v1";
+
 const CONSTITUTION_FILE = path.join(__dirname, "../../data/constitution.md");
 const ORIENTATION_FILE = path.join(__dirname, "../../data/orientation.md");
 
@@ -14,45 +15,36 @@ const headers = {
   "Content-Type": "application/json"
 };
 
-const DEFAULT_ARCHIVES = {
-  public: [],
-  philosophy: [],
-  science: [],
-  nature: [],
-  supernatural: [],
-  questions: [],
-  senna_threads: [],
-  reflections: [],
-  retired: []
-};
-
-const DEFAULT_WORKING = {
-  active_questions: [],
-  active_threads: [],
-  active_tensions: [],
-  temporal_state: {
-    last_user_message_at: null,
-    last_assistant_message_at: null,
-    last_reflection_at: null,
-    last_thread_update_at: null
+const DEFAULT_STATE = {
+  archives: {
+    public: [],
+    philosophy: [],
+    science: [],
+    nature: [],
+    supernatural: [],
+    questions: [],
+    senna_threads: [],
+    reflections: [],
+    retired: []
   },
-  user_profile: {
-    display_name: "You"
+  working_memory: {
+    active_questions: [],
+    active_threads: [],
+    active_tensions: [],
+    temporal_state: {
+      last_user_message_at: null,
+      last_assistant_message_at: null,
+      last_reflection_at: null,
+      last_thread_update_at: null
+    },
+    user_profile: {
+      display_name: "You"
+    }
   }
 };
 
-function readJson(file, fallback) {
-  try {
-    if (!fs.existsSync(file)) return structuredClone(fallback);
-    const raw = fs.readFileSync(file, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return structuredClone(fallback);
-  }
-}
-
-function writeJson(file, value) {
-  fs.writeFileSync(file, JSON.stringify(value, null, 2));
+function safeJsonParse(value, fallback) {
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function readText(file, fallback = "") {
@@ -68,12 +60,41 @@ function makeId(prefix = "entry") {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function ensureFoundationEntries(archives) {
-  const publicArchive = archives.public || [];
+async function loadState(store) {
+  const raw = await store.get(STATE_KEY);
+  if (!raw) return structuredClone(DEFAULT_STATE);
+
+  const parsed = safeJsonParse(raw, structuredClone(DEFAULT_STATE));
+  return {
+    archives: {
+      ...structuredClone(DEFAULT_STATE).archives,
+      ...(parsed.archives || {})
+    },
+    working_memory: {
+      ...structuredClone(DEFAULT_STATE).working_memory,
+      ...(parsed.working_memory || {}),
+      temporal_state: {
+        ...structuredClone(DEFAULT_STATE).working_memory.temporal_state,
+        ...((parsed.working_memory || {}).temporal_state || {})
+      },
+      user_profile: {
+        ...structuredClone(DEFAULT_STATE).working_memory.user_profile,
+        ...((parsed.working_memory || {}).user_profile || {})
+      }
+    }
+  };
+}
+
+async function saveState(store, state) {
+  await store.set(STATE_KEY, JSON.stringify(state));
+}
+
+function ensureFoundationEntries(state) {
+  const publicArchive = state.archives.public || [];
   const hasConstitution = publicArchive.some(e => Array.isArray(e.tags) && e.tags.includes("constitution"));
   const hasOrientation = publicArchive.some(e => Array.isArray(e.tags) && e.tags.includes("orientation"));
 
-  if (!hasConstitution && fs.existsSync(CONSTITUTION_FILE)) {
+  if (!hasConstitution && readText(CONSTITUTION_FILE, "")) {
     publicArchive.unshift({
       id: makeId("foundation"),
       text: "The Constitution of Senna defines the principles governing reflection, memory, dialogue, boundaries, and emergence.",
@@ -85,7 +106,7 @@ function ensureFoundationEntries(archives) {
     });
   }
 
-  if (!hasOrientation && fs.existsSync(ORIENTATION_FILE)) {
+  if (!hasOrientation && readText(ORIENTATION_FILE, "")) {
     publicArchive.unshift({
       id: makeId("foundation"),
       text: "The Orientation Document describes the atmosphere Senna inhabits: continuity, archive, time, unfinished thought, and reflective participation.",
@@ -97,28 +118,8 @@ function ensureFoundationEntries(archives) {
     });
   }
 
-  archives.public = publicArchive;
-  return archives;
-}
-
-function loadState() {
-  const archivesRaw = readJson(ARCHIVES_FILE, { archives: DEFAULT_ARCHIVES });
-  const working = readJson(WORKING_FILE, DEFAULT_WORKING);
-
-  const archives = ensureFoundationEntries({
-    ...DEFAULT_ARCHIVES,
-    ...(archivesRaw.archives || archivesRaw || {})
-  });
-
-  // persist foundation if just created
-  writeJson(ARCHIVES_FILE, { archives });
-
-  return { archives, working_memory: { ...DEFAULT_WORKING, ...working } };
-}
-
-function saveState(state) {
-  writeJson(ARCHIVES_FILE, { archives: state.archives });
-  writeJson(WORKING_FILE, state.working_memory);
+  state.archives.public = publicArchive;
+  return state;
 }
 
 exports.handler = async (event) => {
@@ -127,9 +128,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const state = loadState();
+    connectLambda(event);
+    const store = getStore(STORE_NAME);
+    let state = await loadState(store);
+    state = ensureFoundationEntries(state);
+    await saveState(store, state);
+
     const params = event.queryStringParameters || {};
-    const body = event.body ? JSON.parse(event.body) : {};
+    const body = event.body ? safeJsonParse(event.body, {}) : {};
 
     if (event.httpMethod === "GET") {
       if (params.archive) {
@@ -176,8 +182,8 @@ exports.handler = async (event) => {
 
     if (action === "add_entry") {
       const archive = body.archive || "public";
-      const entry = body.entry || {};
       if (!state.archives[archive]) state.archives[archive] = [];
+      const entry = body.entry || {};
 
       const newEntry = {
         id: entry.id || makeId("entry"),
@@ -198,41 +204,34 @@ exports.handler = async (event) => {
       };
 
       state.archives[archive].unshift(newEntry);
-      saveState(state);
+      await saveState(store, state);
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true, entry: newEntry })
-      };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, entry: newEntry }) };
     }
 
     if (action === "add_working_item") {
       const bucket = body.bucket || "active_threads";
       if (!state.working_memory[bucket]) state.working_memory[bucket] = [];
-      const item = {
-        id: body.item?.id || makeId("wm"),
-        text: body.item?.text || "",
-        origin: body.item?.origin || "senna",
-        tags: Array.isArray(body.item?.tags) ? body.item.tags : [],
-        status: body.item?.status || "active",
-        mentions: body.item?.mentions || 1,
-        date: body.item?.date || new Date().toISOString()
+      const item = body.item || {};
+      const newItem = {
+        id: item.id || makeId("wm"),
+        text: item.text || "",
+        origin: item.origin || "senna",
+        tags: Array.isArray(item.tags) ? item.tags : [],
+        status: item.status || "active",
+        mentions: item.mentions || 1,
+        date: item.date || new Date().toISOString()
       };
-      state.working_memory[bucket].unshift(item);
-      saveState(state);
+      state.working_memory[bucket].unshift(newItem);
+      await saveState(store, state);
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true, item })
-      };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, item: newItem }) };
     }
 
     if (action === "set_display_name") {
       const name = String(body.name || "").trim();
       if (name) state.working_memory.user_profile.display_name = name;
-      saveState(state);
+      await saveState(store, state);
       return {
         statusCode: 200,
         headers,
@@ -244,7 +243,7 @@ exports.handler = async (event) => {
       const key = body.key;
       if (key && Object.prototype.hasOwnProperty.call(state.working_memory.temporal_state, key)) {
         state.working_memory.temporal_state[key] = new Date().toISOString();
-        saveState(state);
+        await saveState(store, state);
       }
       return {
         statusCode: 200,
@@ -265,13 +264,15 @@ exports.handler = async (event) => {
           break;
         }
       }
+
       if (found) {
         found.archive = "retired";
         found.status = "retired";
         found.retired_at = new Date().toISOString();
         state.archives.retired.unshift(found);
-        saveState(state);
+        await saveState(store, state);
       }
+
       return {
         statusCode: found ? 200 : 404,
         headers,
@@ -285,28 +286,14 @@ exports.handler = async (event) => {
         return { statusCode: 403, headers, body: JSON.stringify({ error: "Unauthorized" }) };
       }
 
-      const resetState = {
-        archives: ensureFoundationEntries(structuredClone(DEFAULT_ARCHIVES)),
-        working_memory: structuredClone(DEFAULT_WORKING)
-      };
-      saveState(resetState);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true, reset: true })
-      };
+      let resetState = structuredClone(DEFAULT_STATE);
+      resetState = ensureFoundationEntries(resetState);
+      await saveState(store, resetState);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true, reset: true }) };
     }
 
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Unknown action" })
-    };
+    return { statusCode: 400, headers, body: JSON.stringify({ error: "Unknown action" }) };
   } catch (error) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: error?.message || "archive error" })
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: error?.message || "archive error" }) };
   }
 };
