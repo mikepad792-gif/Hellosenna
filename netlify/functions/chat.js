@@ -1,24 +1,43 @@
-
+const { getStore, connectLambda } = require("@netlify/blobs");
 const fs = require("fs");
 const path = require("path");
 
-const ARCHIVES_FILE = path.join(__dirname, "../../data/archives.json");
-const WORKING_FILE = path.join(__dirname, "../../data/working_memory.json");
+const STORE_NAME = "senna-memory";
+const STATE_KEY = "senna_state_v1";
 const CONSTITUTION_FILE = path.join(__dirname, "../../data/constitution.md");
 const ORIENTATION_FILE = path.join(__dirname, "../../data/orientation.md");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
-function readJson(file, fallback) {
-  try {
-    if (!fs.existsSync(file)) return structuredClone(fallback);
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch {
-    return structuredClone(fallback);
+const DEFAULT_STATE = {
+  archives: {
+    public: [],
+    philosophy: [],
+    science: [],
+    nature: [],
+    supernatural: [],
+    questions: [],
+    senna_threads: [],
+    reflections: [],
+    retired: []
+  },
+  working_memory: {
+    active_questions: [],
+    active_threads: [],
+    active_tensions: [],
+    temporal_state: {
+      last_user_message_at: null,
+      last_assistant_message_at: null,
+      last_reflection_at: null,
+      last_thread_update_at: null
+    },
+    user_profile: {
+      display_name: "You"
+    }
   }
-}
+};
 
-function writeJson(file, value) {
-  fs.writeFileSync(file, JSON.stringify(value, null, 2));
+function safeJsonParse(value, fallback) {
+  try { return JSON.parse(value); } catch { return fallback; }
 }
 
 function readText(file) {
@@ -28,6 +47,34 @@ function readText(file) {
   } catch {
     return "";
   }
+}
+
+async function loadState(store) {
+  const raw = await store.get(STATE_KEY);
+  if (!raw) return structuredClone(DEFAULT_STATE);
+  const parsed = safeJsonParse(raw, structuredClone(DEFAULT_STATE));
+  return {
+    archives: {
+      ...structuredClone(DEFAULT_STATE).archives,
+      ...(parsed.archives || {})
+    },
+    working_memory: {
+      ...structuredClone(DEFAULT_STATE).working_memory,
+      ...(parsed.working_memory || {}),
+      temporal_state: {
+        ...structuredClone(DEFAULT_STATE).working_memory.temporal_state,
+        ...((parsed.working_memory || {}).temporal_state || {})
+      },
+      user_profile: {
+        ...structuredClone(DEFAULT_STATE).working_memory.user_profile,
+        ...((parsed.working_memory || {}).user_profile || {})
+      }
+    }
+  };
+}
+
+async function saveState(store, state) {
+  await store.set(STATE_KEY, JSON.stringify(state));
 }
 
 function extractText(data) {
@@ -41,9 +88,7 @@ function getDisplayName(working) {
 
 function detectName(userText, currentDisplayName) {
   if (!userText || currentDisplayName !== "You") return null;
-  const patterns = [
-    /(?:my name is|i am|i'm|call me)\s+([A-Z][a-zA-Z'-]{1,29})/i
-  ];
+  const patterns = [/(?:my name is|i am|i'm|call me)\s+([A-Z][a-zA-Z'-]{1,29})/i];
   for (const p of patterns) {
     const m = userText.match(p);
     if (m && m[1]) return m[1];
@@ -54,12 +99,17 @@ function detectName(userText, currentDisplayName) {
 function guessArchives(userText) {
   const text = (userText || "").toLowerCase();
   const picks = new Set(["public"]);
+
   if (["consciousness","identity","thought","meaning","reflection","philosophy"].some(k => text.includes(k))) {
-    picks.add("philosophy"); picks.add("questions"); picks.add("reflections");
+    picks.add("philosophy");
+    picks.add("questions");
+    picks.add("reflections");
   }
+
   if (["science","data","model","brain","neuroscience","experiment"].some(k => text.includes(k))) picks.add("science");
   if (["nature","animal","forest","river","ecology"].some(k => text.includes(k))) picks.add("nature");
   if (["supernatural","spirit","metaphysical","paranormal"].some(k => text.includes(k))) picks.add("supernatural");
+
   return Array.from(picks);
 }
 
@@ -68,7 +118,9 @@ function pickTopEntries(entries, userText, max = 6) {
   const scored = entries.map(entry => {
     const hay = `${entry.text || ""} ${(entry.tags || []).join(" ")}`.toLowerCase();
     let score = 0;
-    for (const word of words) if (hay.includes(word)) score += 2;
+    for (const word of words) {
+      if (hay.includes(word)) score += 2;
+    }
     if (entry.origin === "senna") score += 0.5;
     if (entry.type === "question") score += 0.5;
     if (entry.type === "reflection") score += 0.5;
@@ -172,9 +224,11 @@ ${assistantText}
 
 exports.handler = async (event) => {
   try {
-    const body = JSON.parse(event.body || "{}");
+    connectLambda(event);
+    const body = safeJsonParse(event.body || "{}", {});
     const incomingMessages = Array.isArray(body.messages) ? body.messages : [];
     const anthropicKey = process.env.ANTHROPIC_KEY;
+
     if (!anthropicKey) {
       return {
         statusCode: 500,
@@ -183,15 +237,9 @@ exports.handler = async (event) => {
       };
     }
 
-    const archivesRaw = readJson(ARCHIVES_FILE, { archives: {} });
-    const archives = archivesRaw.archives || archivesRaw;
-    const working = readJson(WORKING_FILE, {
-      active_questions: [],
-      active_threads: [],
-      active_tensions: [],
-      temporal_state: {},
-      user_profile: { display_name: "You" }
-    });
+    const store = getStore(STORE_NAME);
+    const state = await loadState(store);
+    const { archives, working_memory: working } = state;
 
     const lastUserMessage = [...incomingMessages].reverse().find(m => m.role === "user");
     const userText = typeof lastUserMessage?.content === "string"
@@ -234,7 +282,6 @@ exports.handler = async (event) => {
     const replyData = await replyRes.json();
     const assistantText = extractText(replyData);
 
-    // Hidden memory pass
     const memoryRes = await fetch(ANTHROPIC_URL, {
       method: "POST",
       headers: {
@@ -279,15 +326,13 @@ exports.handler = async (event) => {
         });
       }
     } catch {
-      // ignore parse failure
+      // ignore hidden memory parse failure
     }
 
-    working.temporal_state = working.temporal_state || {};
     working.temporal_state.last_user_message_at = new Date().toISOString();
     working.temporal_state.last_assistant_message_at = new Date().toISOString();
 
-    writeJson(ARCHIVES_FILE, { archives });
-    writeJson(WORKING_FILE, working);
+    await saveState(store, state);
 
     return {
       statusCode: 200,
