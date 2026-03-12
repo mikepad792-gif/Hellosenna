@@ -894,3 +894,286 @@
         reader.readAsDataURL(file);
       });
     }
+async function sendMessage() {
+      const text = inputEl.value.trim();
+      if ((!text && attachedFiles.length === 0) || loading) return;
+
+      loading = true;
+      sendBtn.disabled = true;
+      thinkingEl.style.display = "flex";
+
+      let userContent;
+
+      if (attachedFiles.length > 0) {
+        const parts = [];
+
+        for (const file of attachedFiles) {
+          if (file.mediaType === "application/pdf") {
+            parts.push({
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: file.base64
+              }
+            });
+          } else if (file.mediaType.startsWith("image/")) {
+            parts.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: file.mediaType,
+                data: file.base64
+              }
+            });
+          } else {
+            parts.push({
+              type: "text",
+              text: `[Attached file: ${file.name}]`
+            });
+          }
+        }
+
+        if (text) {
+          parts.push({
+            type: "text",
+            text
+          });
+        }
+
+        userContent = parts;
+      } else {
+        userContent = text;
+      }
+
+      const userMsg = { role: "user", content: userContent };
+      messages.push(userMsg);
+      renderMessages();
+
+      inputEl.value = "";
+      inputEl.style.height = "56px";
+      attachedFiles = [];
+      renderFileList();
+      updateStatus("");
+
+      try {
+        const payload = {
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        };
+
+        const res = await fetch("/.netlify/functions/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "The response failed to arrive.");
+        }
+
+        if (data.display_name) {
+          displayName = data.display_name;
+        }
+
+        messages.push({
+          role: "assistant",
+          content: data.content || "The response failed to arrive.",
+          archives_used: data.archives_used || []
+        });
+
+        renderMessages();
+        await loadArchiveState();
+
+      } catch (err) {
+
+        messages.push({
+          role: "assistant",
+          content: "The response failed to arrive. Try again."
+        });
+
+        renderMessages();
+        updateStatus(err.message || "Transmission error.");
+
+      } finally {
+
+        loading = false;
+        sendBtn.disabled = false;
+        thinkingEl.style.display = "none";
+
+      }
+    }
+
+    window.sendMessage = sendMessage;
+
+    async function triggerReflection() {
+
+      if (!mikeSecret || loading) return;
+
+      reflectBtn.disabled = true;
+      updateStatus("Running reflection...");
+
+      try {
+
+        const res = await fetch("/.netlify/functions/reflect", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            secret: mikeSecret
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Reflection failed.");
+        }
+
+        await loadArchiveState();
+        updateStatus(`Reflection saved: ${data.title || "untitled"}`);
+
+      } catch (err) {
+
+        updateStatus(err.message || "Reflection failed.");
+
+      } finally {
+
+        reflectBtn.disabled = false;
+
+      }
+    }
+
+    async function resetSennaMemory() {
+
+      if (!mikeSecret || loading) return;
+
+      const confirmed = confirm("Clear all Senna memory?");
+      if (!confirmed) return;
+
+      resetBtn.disabled = true;
+
+      try {
+
+        const res = await fetch("/.netlify/functions/archive", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "reset_all",
+            secret: mikeSecret
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Reset failed.");
+        }
+
+        messages = [];
+        displayName = "You";
+
+        await loadArchiveState();
+        renderMessages();
+
+        updateStatus("Senna memory cleared.");
+
+      } catch (err) {
+
+        updateStatus(err.message || "Reset failed.");
+
+      } finally {
+
+        resetBtn.disabled = false;
+
+      }
+    }
+
+    function handleAdminUnlock() {
+
+      const entered = prompt("Enter admin secret");
+
+      if (entered && entered.trim()) {
+        mikeSecret = entered.trim();
+        localStorage.setItem("mike_secret", mikeSecret);
+        updateAdminUI();
+        updateStatus("Admin unlocked.");
+      }
+    }
+
+    archiveToggle.addEventListener("click", toggleArchive);
+    mobileOverlay.addEventListener("click", closeArchive);
+    reflectBtn.addEventListener("click", triggerReflection);
+    resetBtn.addEventListener("click", resetSennaMemory);
+
+    fileInput.addEventListener("change", async (e) => {
+
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      const converted = [];
+
+      for (const file of files) {
+        try {
+          const processed = await fileToBase64(file);
+          converted.push(processed);
+        } catch (err) {
+          console.error("File conversion failed:", file.name);
+        }
+      }
+
+      attachedFiles = [...attachedFiles, ...converted];
+      renderFileList();
+      fileInput.value = "";
+
+    });
+
+    inputEl.addEventListener("input", autoResize);
+
+    inputEl.addEventListener("keydown", (e) => {
+
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+
+    });
+
+    titleEl.addEventListener("mousedown", () => {
+      pressTimer = setTimeout(handleAdminUnlock, 800);
+    });
+
+    titleEl.addEventListener("mouseup", () => {
+      clearTimeout(pressTimer);
+    });
+
+    titleEl.addEventListener("mouseleave", () => {
+      clearTimeout(pressTimer);
+    });
+
+    window.addEventListener("resize", () => {
+
+      if (window.innerWidth > 920) {
+        mobileOverlay.style.display = "none";
+      } else if (!archivePanel.classList.contains("hidden")) {
+        mobileOverlay.style.display = "block";
+      }
+
+    });
+
+    loadArchiveState();
+    renderMessages();
+    updateAdminUI();
+
+  </script>
+</body>
+</html>
