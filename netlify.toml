@@ -1,0 +1,7 @@
+
+[build]
+functions = "netlify/functions"
+
+[[scheduled]]
+path = "/.netlify/functions/scheduler"
+cron = "0 0,12 * * *"
