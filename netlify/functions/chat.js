@@ -88,10 +88,12 @@ function getDisplayName(working) {
 
 function detectName(userText, currentDisplayName) {
   if (!userText || currentDisplayName !== "You") return null;
-  const patterns = [/(?:my name is|i am|i'm|call me)\s+([A-Z][a-zA-Z'-]{1,29})/i];
+  // Only match explicit name introductions, not common words
+  const patterns = [/my name is\s+([A-Z][a-zA-Z'-]{1,29})/i, /call me\s+([A-Z][a-zA-Z'-]{1,29})/i];
+  const COMMON_WORDS = new Set(["sorry","fine","good","okay","ok","here","there","not","just","doing","well","back","new","sure","glad","happy","ready","tired","home","lost","found","free","busy","late","early","right","wrong","out","in","up","on","off"]);
   for (const p of patterns) {
     const m = userText.match(p);
-    if (m && m[1]) return m[1];
+    if (m && m[1] && !COMMON_WORDS.has(m[1].toLowerCase())) return m[1];
   }
   return null;
 }
