@@ -89,6 +89,30 @@ function extractText(data) {
   return data.content.filter(part => part.type === "text").map(part => part.text).join("\n").trim();
 }
 
+function extractJsonObject(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  // Try direct parse
+  try { return JSON.parse(raw); } catch {}
+
+  // Try stripping markdown fences
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    try { return JSON.parse(fenceMatch[1].trim()); } catch {}
+  }
+
+  // Try extracting first complete JSON object by brace matching
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = raw.slice(firstBrace, lastBrace + 1);
+    try { return JSON.parse(candidate); } catch {}
+  }
+
+  return null;
+}
+
 function chooseContinuingThread(threads, working) {
   const activeThreads = working.active_threads || [];
   const recent = threads.filter(t => t.status !== "retired").slice(0, 5);
@@ -215,22 +239,14 @@ exports.handler = async (event) => {
     const data = await res.json();
     const text = extractText(data);
 
-    // Strip markdown code fences if present
-    let cleanText = text.trim();
-    if (cleanText.startsWith("```")) {
-      cleanText = cleanText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "").trim();
-    }
+    console.log("Reflection raw response length:", text.length);
+    console.log("Reflection raw start:", text.slice(0, 200));
 
-    console.log("Reflection raw response length:", cleanText.length);
-    console.log("Reflection raw start:", cleanText.slice(0, 200));
+    const parsed = extractJsonObject(text);
 
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanText);
-    } catch (parseErr) {
-      console.error("JSON parse failed:", parseErr.message);
-      console.error("Raw text:", cleanText.slice(0, 500));
-      return { statusCode: 500, headers, body: JSON.stringify({ error: "Invalid reflection JSON", raw: cleanText.slice(0, 300) }) };
+    if (!parsed || typeof parsed !== "object") {
+      console.error("JSON extraction failed from raw text:", text.slice(0, 500));
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Invalid reflection JSON", raw: text.slice(0, 300) }) };
     }
 
     console.log("Parsed mode:", parsed.mode, "title:", parsed.title);
