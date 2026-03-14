@@ -88,8 +88,7 @@ function getDisplayName(working) {
 
 function detectName(userText, currentDisplayName) {
   if (!userText || currentDisplayName !== "You") return null;
-  // Only match explicit name introductions, not common words
-  const patterns = [/my name is\s+([A-Z][a-zA-Z'-]{1,29})/i, /call me\s+([A-Z][a-zA-Z'-]{1,29})/i];
+  const patterns = [/(?:my name is|i am|i'm|call me)\s+([A-Z][a-zA-Z'-]{1,29})/i];
   const COMMON_WORDS = new Set(["sorry","fine","good","okay","ok","here","there","not","just","doing","well","back","new","sure","glad","happy","ready","tired","home","lost","found","free","busy","late","early","right","wrong","out","in","up","on","off"]);
   for (const p of patterns) {
     const m = userText.match(p);
@@ -224,9 +223,6 @@ Only mention time passing when it genuinely matters to the conversation.
 — Name recognition —
 If the visitor tells you their name and the current participant label is still "You", emit [NAME:Firstname] once at the very end of your response on its own line. It will be stripped from display and used to update their label. Do this only once, the first time you learn their name.
 
-— Visitor ID —
-If a visitor mentions a personal ID or token (e.g. to resume a prior conversation), acknowledge it naturally. Their prior context will be loaded from the archive.
-
 Constitution:
 ${constitution}
 
@@ -241,16 +237,6 @@ ${contextBlock}
 function buildMemoryPrompt(userText, assistantText) {
   return `
 You are choosing whether anything from this exchange deserves preservation.
-
-Available archives — choose the most fitting one:
-- public: general insights, ideas, moments worth sharing with anyone
-- philosophy: questions of consciousness, meaning, identity, existence
-- science: empirical thinking, systems, mechanisms, how things actually work
-- nature: the living world, ecology, embodied experience
-- supernatural: what exceeds explanation, mystery, the ineffable
-- questions: open questions Senna wants to keep returning to
-- reflections: Senna's self-understanding, her own nature and becoming
-- senna_threads: ongoing threads of thought across conversations
 
 Return ONLY valid JSON with one of these exact shapes:
 
@@ -288,6 +274,173 @@ ${assistantText}
 `;
 }
 
+function extractJsonObject(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {}
+
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch {}
+  }
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = raw.slice(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+
+  return null;
+}
+
+function normalizeMemoryPayload(parsed) {
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const archive = typeof parsed.archive === "string" && parsed.archive.trim() ? parsed.archive.trim() : "public";
+  const type = typeof parsed.type === "string" && parsed.type.trim() ? parsed.type.trim() : "idea";
+  const bucket = typeof parsed.bucket === "string" && parsed.bucket.trim() ? parsed.bucket.trim() : "active_threads";
+  const text = typeof parsed.text === "string" ? parsed.text.trim() : "";
+  const tags = Array.isArray(parsed.tags)
+    ? parsed.tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 8)
+    : [];
+
+  return {
+    save_memory: Boolean(parsed.save_memory),
+    archive,
+    type,
+    text,
+    bucket,
+    tags,
+    reason: typeof parsed.reason === "string" ? parsed.reason.trim() : ""
+  };
+}
+
+function fallbackMemoryFromExchange(userText, assistantText) {
+  const user = String(userText || "").trim();
+  const assistant = String(assistantText || "").trim();
+  if (!user && !assistant) return null;
+
+  const combined = `${user}\n${assistant}`.toLowerCase();
+  const durableSignals = [
+    "remember",
+    "save this",
+    "don't forget",
+    "important",
+    "my name is",
+    "i am",
+    "i'm",
+    "call me",
+    "question",
+    "theory",
+    "idea",
+    "belief",
+    "project",
+    "plan"
+  ];
+
+  const hasSignal = durableSignals.some(signal => combined.includes(signal));
+  if (!hasSignal) return null;
+
+  let text = user;
+  if (!text && assistant) text = assistant;
+  text = text.replace(/\s+/g, " ").trim();
+
+  if (!text) return null;
+  if (text.length > 240) text = `${text.slice(0, 237).trim()}...`;
+
+  let archive = "public";
+  let bucket = "active_threads";
+  let type = "idea";
+  const lower = text.toLowerCase();
+  const tags = [];
+
+  if (["consciousness", "identity", "meaning", "philosophy", "reflection"].some(k => lower.includes(k))) {
+    archive = "philosophy";
+    bucket = "active_questions";
+    type = "question";
+    tags.push("philosophy");
+  }
+
+  if (["science", "model", "experiment", "brain", "data"].some(k => lower.includes(k))) {
+    archive = "science";
+    tags.push("science");
+  }
+
+  if (lower.includes("?")) {
+    type = "question";
+    if (bucket === "active_threads") bucket = "active_questions";
+  }
+
+  return {
+    save_memory: true,
+    archive,
+    type,
+    text,
+    bucket,
+    tags,
+    reason: "fallback_capture"
+  };
+}
+
+function upsertMemory(archives, working, parsed) {
+  if (!parsed?.save_memory || !parsed.text) return false;
+
+  const archiveName = archives[parsed.archive] ? parsed.archive : "public";
+  const bucketName = Array.isArray(working[parsed.bucket]) ? parsed.bucket : "active_threads";
+  const normalizedText = parsed.text.trim();
+  const now = new Date().toISOString();
+
+  const existingArchive = (archives[archiveName] || []).find(
+    entry => String(entry.text || "").trim().toLowerCase() === normalizedText.toLowerCase()
+  );
+
+  if (existingArchive) {
+    existingArchive.date = now;
+    existingArchive.tags = Array.from(new Set([...(existingArchive.tags || []), ...(parsed.tags || [])]));
+  } else {
+    archives[archiveName].unshift({
+      id: `entry_${Date.now()}`,
+      text: normalizedText,
+      archive: archiveName,
+      origin: "co-created",
+      type: parsed.type || "idea",
+      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+      date: now
+    });
+  }
+
+  const existingWorking = (working[bucketName] || []).find(
+    entry => String(entry.text || "").trim().toLowerCase() === normalizedText.toLowerCase()
+  );
+
+  if (existingWorking) {
+    existingWorking.date = now;
+    existingWorking.status = existingWorking.status || "active";
+    existingWorking.mentions = Number(existingWorking.mentions || 0) + 1;
+    existingWorking.tags = Array.from(new Set([...(existingWorking.tags || []), ...(parsed.tags || [])]));
+  } else {
+    working[bucketName].unshift({
+      id: `wm_${Date.now()}`,
+      text: normalizedText,
+      origin: "co-created",
+      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+      mentions: 1,
+      status: "active",
+      date: now
+    });
+  }
+
+  return true;
+}
+
 exports.handler = async (event) => {
   try {
     connectLambda(event);
@@ -303,7 +456,7 @@ exports.handler = async (event) => {
     const state = await loadState(store);
     const { archives, working_memory: working } = state;
 
-    // User ID thread loading
+    // User ID thread loading — restore prior visitor context
     const userId = body.user_id || null;
     if (userId && userId.length > 2) {
       const threadKey = `user_thread_${userId}`;
@@ -379,68 +532,34 @@ exports.handler = async (event) => {
 
     assistantText = stripMarkers(assistantText);
 
-    // Update temporal state
+    const memoryRes = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: process.env.SENNA_MODEL || "claude-sonnet-4-20250514",
+        max_tokens: 350,
+        messages: [{ role: "user", content: buildMemoryPrompt(userText, assistantText) }]
+      })
+    });
+
+    const memoryData = await memoryRes.json();
+    const rawMemory = extractText(memoryData);
+
+    const parsedMemory = normalizeMemoryPayload(extractJsonObject(rawMemory));
+    const fallbackMemory = parsedMemory?.save_memory ? null : fallbackMemoryFromExchange(userText, assistantText);
+    const memoryToSave = parsedMemory?.save_memory ? parsedMemory : fallbackMemory;
+
+    if (memoryToSave) {
+      upsertMemory(archives, working, memoryToSave);
+    }
+
     working.temporal_state.last_user_message_at = new Date().toISOString();
     working.temporal_state.last_assistant_message_at = new Date().toISOString();
 
-    // Memory classification — must complete before handler returns
-    // (serverless freezes execution on return, killing any async work)
-    let memorySaved = false;
-    try {
-      const memoryRes = await fetch(ANTHROPIC_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: process.env.SENNA_MODEL || "claude-sonnet-4-20250514",
-          max_tokens: 350,
-          messages: [{ role: "user", content: buildMemoryPrompt(userText, assistantText) }]
-        })
-      });
-
-      const memoryData = await memoryRes.json();
-      let rawMemory = extractText(memoryData).trim();
-      if (rawMemory.startsWith("```")) {
-        rawMemory = rawMemory.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "").trim();
-      }
-
-      const parsed = JSON.parse(rawMemory);
-      if (parsed.save_memory && parsed.text) {
-        const archiveName = parsed.archive || "public";
-        if (!archives[archiveName]) archives[archiveName] = [];
-        archives[archiveName].unshift({
-          id: `entry_${Date.now()}`,
-          text: parsed.text,
-          archive: archiveName,
-          origin: "co-created",
-          type: parsed.type || "idea",
-          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-          date: new Date().toISOString()
-        });
-
-        const bucket = parsed.bucket || "active_threads";
-        if (!working[bucket]) working[bucket] = [];
-        working[bucket].unshift({
-          id: `wm_${Date.now()}`,
-          text: parsed.text,
-          origin: "co-created",
-          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-          mentions: 1,
-          status: "active",
-          date: new Date().toISOString()
-        });
-
-        memorySaved = true;
-        console.log("Memory saved to archive:", archiveName, parsed.text.slice(0, 60));
-      }
-    } catch (e) {
-      console.error("Memory classification failed:", e.message);
-    }
-
-    // Save full state (temporal + any new archive entry) in one write
     await saveState(store, state);
 
     return {
@@ -450,8 +569,7 @@ exports.handler = async (event) => {
         role: "assistant",
         content: assistantText,
         archives_used: selectedArchives,
-        display_name: getDisplayName(working),
-        memory_saved: memorySaved
+        display_name: getDisplayName(working)
       })
     };
   } catch (error) {
