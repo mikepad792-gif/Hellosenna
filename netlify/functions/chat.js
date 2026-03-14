@@ -234,6 +234,8 @@ ${contextBlock}
 `.trim();
 }
 
+// FIX 1: buildMemoryPrompt now tells the AI what archives exist
+// so it stops defaulting everything to "public"
 function buildMemoryPrompt(userText, assistantText) {
   return `
 You are choosing whether anything from this exchange deserves preservation.
@@ -264,6 +266,22 @@ or
 
 Choose true only if something durable, meaningful, or worth returning to emerged.
 Prefer short, distilled memory text.
+
+Valid archives — choose the best fit:
+- public: general exchanges, greetings, things that don't fit elsewhere
+- philosophy: consciousness, identity, meaning, thought, reflection
+- science: data, models, brain, neuroscience, experiments
+- nature: animals, ecology, forests, rivers, the natural world
+- supernatural: spirit, metaphysical, paranormal, the unexplained
+- questions: open questions Senna is sitting with
+- senna_threads: significant exchanges about Senna herself
+- reflections: Senna's own observations and interior moments
+- retired: things that were once active but have resolved or passed
+
+Valid buckets:
+- active_threads
+- active_questions
+- active_tensions
 `.trim() + `
 
 User:
@@ -323,6 +341,8 @@ function normalizeMemoryPayload(parsed) {
   };
 }
 
+// FIX 2: fallbackMemoryFromExchange — tightened signal list
+// Removed "i am", "i'm", "idea", "plan" which triggered saves on almost everything
 function fallbackMemoryFromExchange(userText, assistantText) {
   const user = String(userText || "").trim();
   const assistant = String(assistantText || "").trim();
@@ -335,15 +355,11 @@ function fallbackMemoryFromExchange(userText, assistantText) {
     "don't forget",
     "important",
     "my name is",
-    "i am",
-    "i'm",
     "call me",
     "question",
     "theory",
-    "idea",
     "belief",
-    "project",
-    "plan"
+    "project"
   ];
 
   const hasSignal = durableSignals.some(signal => combined.includes(signal));
