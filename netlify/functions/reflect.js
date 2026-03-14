@@ -215,12 +215,25 @@ exports.handler = async (event) => {
     const data = await res.json();
     const text = extractText(data);
 
+    // Strip markdown code fences if present
+    let cleanText = text.trim();
+    if (cleanText.startsWith("```")) {
+      cleanText = cleanText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "").trim();
+    }
+
+    console.log("Reflection raw response length:", cleanText.length);
+    console.log("Reflection raw start:", cleanText.slice(0, 200));
+
     let parsed;
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: "Invalid reflection JSON", raw: text }) };
+      parsed = JSON.parse(cleanText);
+    } catch (parseErr) {
+      console.error("JSON parse failed:", parseErr.message);
+      console.error("Raw text:", cleanText.slice(0, 500));
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Invalid reflection JSON", raw: cleanText.slice(0, 300) }) };
     }
+
+    console.log("Parsed mode:", parsed.mode, "title:", parsed.title);
 
     const threadText = (parsed.messages || []).map(m => `Senna: ${m.text}`).join("\n");
     const now = new Date().toISOString();
