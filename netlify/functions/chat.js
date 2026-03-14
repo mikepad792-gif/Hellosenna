@@ -219,6 +219,12 @@ Do not exaggerate elapsed time.
 If the interval is short, treat it as recent.
 Only mention time passing when it genuinely matters to the conversation.
 
+— Name recognition —
+If the visitor tells you their name and the current participant label is still "You", emit [NAME:Firstname] once at the very end of your response on its own line. It will be stripped from display and used to update their label. Do this only once, the first time you learn their name.
+
+— Visitor ID —
+If a visitor mentions a personal ID or token (e.g. to resume a prior conversation), acknowledge it naturally. Their prior context will be loaded from the archive.
+
 Constitution:
 ${constitution}
 
@@ -294,6 +300,24 @@ exports.handler = async (event) => {
     const store = getStore(STORE_NAME);
     const state = await loadState(store);
     const { archives, working_memory: working } = state;
+
+    // User ID thread loading
+    const userId = body.user_id || null;
+    if (userId && userId.length > 2) {
+      const threadKey = `user_thread_${userId}`;
+      const userThread = archives.senna_threads?.find(t => t.id === threadKey);
+      if (userThread && !working.active_threads?.find(t => t.id === threadKey)) {
+        if (!working.active_threads) working.active_threads = [];
+        working.active_threads.unshift({
+          id: threadKey,
+          text: userThread.text?.slice(-800) || "",
+          origin: "visitor",
+          tags: ["visitor-thread", userId],
+          status: "active",
+          date: userThread.last_updated || userThread.date
+        });
+      }
+    }
 
     const lastUserMessage = [...incomingMessages].reverse().find(m => m.role === "user");
     const userText = typeof lastUserMessage?.content === "string"
