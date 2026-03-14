@@ -1287,11 +1287,16 @@ fileInput.addEventListener("change", async (e) => {
     titleEl.addEventListener("mousedown", () => {
       pressTimer = setTimeout(handleAdminUnlock, 800);
     });
-
+    titleEl.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      pressTimer = setTimeout(handleAdminUnlock, 800);
+    }, { passive: false });
     titleEl.addEventListener("mouseup", () => {
       clearTimeout(pressTimer);
     });
-
+    titleEl.addEventListener("touchend", () => {
+      clearTimeout(pressTimer);
+    });
     titleEl.addEventListener("mouseleave", () => {
       clearTimeout(pressTimer);
     });
