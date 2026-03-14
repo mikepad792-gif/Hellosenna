@@ -1095,7 +1095,7 @@ async function sendMessage() {
       const hint = document.querySelector(".composer-hint");
       if (!hint) return;
       if (userId) {
-        hint.innerHTML = \`press Enter to send · Shift+Enter for a line break · <span class="user-id-active" onclick="clearUserId()" title="click to clear">ID: \${userId} ✕</span>\`;
+        hint.innerHTML = '<span style="font-style:italic;color:#3a3224;letter-spacing:0.08em">press Enter to send · Shift+Enter for a line break · <span class="user-id-active" onclick="clearUserId()" title="click to clear">ID: ' + userId + ' ✕</span></span>';
       } else {
         hint.textContent = "press Enter to send · Shift+Enter for a line break";
       }
