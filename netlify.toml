@@ -1,8 +1,12 @@
-
 [build]
-functions = "netlify/functions"
-command = "npm install"
+  functions = "netlify/functions"
+  command = "npm install"
 
-[[scheduled]]
-path = "/.netlify/functions/scheduler"
-cron = "0 0,12 * * *"
+[functions]
+  node_bundler = "esbuild"
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
+[functions."scheduler"]
+  schedule = "0 0,12 * * *"

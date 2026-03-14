@@ -537,6 +537,27 @@
         min-width: 70px;
       }
     }
+
+    /* User ID prompt */
+    .user-id-prompt {
+      background: #0e0c09;
+      border-top: 1px solid #1c1810;
+      padding: 12px 24px;
+      flex-shrink: 0;
+    }
+    .user-id-inner { max-width: 680px; margin: 0 auto; }
+    .user-id-label { font-size: 10.5px; color: #3a3224; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; font-style: italic; }
+    .user-id-row { display: flex; gap: 8px; align-items: center; }
+    .user-id-input { flex: 1; background: #100e0b; border: 1px solid #211d16; color: #c4a870; padding: 7px 10px; font-family: inherit; font-size: 12.5px; border-radius: 2px; outline: none; min-width: 0; }
+    .user-id-input:focus { border-color: #3a3020; }
+    .user-id-input::placeholder { color: #2a2418; font-style: italic; }
+    .user-id-save { background: #1c1710; border: 1px solid #2a2418; color: #7a6440; padding: 7px 14px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; font-family: inherit; border-radius: 2px; white-space: nowrap; }
+    .user-id-save:hover { color: #c4a060; border-color: #3a3020; }
+    .user-id-dismiss { background: none; border: none; color: #2a2418; font-size: 10px; cursor: pointer; font-family: inherit; font-style: italic; padding: 4px; }
+    .user-id-dismiss:hover { color: #5a4e38; }
+    .user-id-active { font-size: 10px; color: #3a3224; letter-spacing: 0.1em; font-style: italic; cursor: pointer; }
+    .user-id-active:hover { color: #7a6440; }
+
   </style>
 </head>
 <body>
@@ -614,6 +635,18 @@
           <div class="composer-hint">press Enter to send · Shift+Enter for a line break</div>
         </div>
       </div>
+
+      <!-- User ID prompt -->
+      <div id="userIdPrompt" class="user-id-prompt" style="display:none;">
+        <div class="user-id-inner">
+          <div class="user-id-label">Create a personal ID to resume this conversation later</div>
+          <div class="user-id-row">
+            <input id="userIdInput" class="user-id-input" type="text" placeholder="choose any word or phrase…" maxlength="40" />
+            <button class="user-id-save" onclick="saveUserId()">save</button>
+            <button class="user-id-dismiss" onclick="dismissUserIdPrompt()">not now</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -645,6 +678,8 @@
     let selectedBucket = "active_questions";
     let pressTimer = null;
     let displayName = "You";
+    let userId = localStorage.getItem("senna_user_id") || "";
+    let userIdPromptShown = false;
 
     const archiveNames = [
       "public",
@@ -977,7 +1012,8 @@ async function sendMessage() {
           messages: messages.map(m => ({
             role: m.role,
             content: m.content
-          }))
+          })),
+          ...(userId ? { user_id: userId } : {})
         };
 
         const res = await fetch("/.netlify/functions/chat", {
@@ -994,8 +1030,13 @@ async function sendMessage() {
           throw new Error(data?.error || "The response failed to arrive.");
         }
 
-        if (data.display_name) {
+        if (data.display_name && data.display_name !== "You") {
+          const nameChanged = displayName === "You" || displayName !== data.display_name;
           displayName = data.display_name;
+          if (nameChanged && !userId && !userIdPromptShown) {
+            userIdPromptShown = true;
+            setTimeout(() => showUserIdPrompt(), 800);
+          }
         }
 
         messages.push({
@@ -1026,7 +1067,51 @@ async function sendMessage() {
       }
     }
 
-    window.sendMessage = sendMessage;
+    // User ID functions
+    function showUserIdPrompt() {
+      const prompt = document.getElementById("userIdPrompt");
+      if (prompt) prompt.style.display = "block";
+    }
+
+    function dismissUserIdPrompt() {
+      const prompt = document.getElementById("userIdPrompt");
+      if (prompt) prompt.style.display = "none";
+    }
+
+    function saveUserId() {
+      const input = document.getElementById("userIdInput");
+      const val = input ? input.value.trim() : "";
+      if (!val) return;
+      userId = val;
+      localStorage.setItem("senna_user_id", val);
+      dismissUserIdPrompt();
+      updateStatus("ID saved — use \"" + val + "\" to return to this thread.");
+      setTimeout(() => updateStatus(""), 4000);
+      // Show active ID in composer hint
+      renderUserIdStatus();
+    }
+
+    function renderUserIdStatus() {
+      const hint = document.querySelector(".composer-hint");
+      if (!hint) return;
+      if (userId) {
+        hint.innerHTML = \`press Enter to send · Shift+Enter for a line break · <span class="user-id-active" onclick="clearUserId()" title="click to clear">ID: \${userId} ✕</span>\`;
+      } else {
+        hint.textContent = "press Enter to send · Shift+Enter for a line break";
+      }
+    }
+
+    function clearUserId() {
+      userId = "";
+      localStorage.removeItem("senna_user_id");
+      userIdPromptShown = false;
+      renderUserIdStatus();
+    }
+
+    // Init user ID display
+    if (userId) renderUserIdStatus();
+
+        window.sendMessage = sendMessage;
 
     async function triggerReflection() {
 
