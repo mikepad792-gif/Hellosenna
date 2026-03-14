@@ -383,84 +383,77 @@ exports.handler = async (event) => {
     working.temporal_state.last_user_message_at = new Date().toISOString();
     working.temporal_state.last_assistant_message_at = new Date().toISOString();
 
-    // Save state with reply first, then do memory classification in background
+    // Memory classification — must complete before handler returns
+    // (serverless freezes execution on return, killing any async work)
+    let memorySaved = false;
+    try {
+      const memoryRes = await fetch(ANTHROPIC_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: process.env.SENNA_MODEL || "claude-sonnet-4-20250514",
+          max_tokens: 350,
+          messages: [{ role: "user", content: buildMemoryPrompt(userText, assistantText) }]
+        })
+      });
+
+      const memoryData = await memoryRes.json();
+      let rawMemory = extractText(memoryData).trim();
+      if (rawMemory.startsWith("```")) {
+        rawMemory = rawMemory.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "").trim();
+      }
+
+      const parsed = JSON.parse(rawMemory);
+      if (parsed.save_memory && parsed.text) {
+        const archiveName = parsed.archive || "public";
+        if (!archives[archiveName]) archives[archiveName] = [];
+        archives[archiveName].unshift({
+          id: `entry_${Date.now()}`,
+          text: parsed.text,
+          archive: archiveName,
+          origin: "co-created",
+          type: parsed.type || "idea",
+          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+          date: new Date().toISOString()
+        });
+
+        const bucket = parsed.bucket || "active_threads";
+        if (!working[bucket]) working[bucket] = [];
+        working[bucket].unshift({
+          id: `wm_${Date.now()}`,
+          text: parsed.text,
+          origin: "co-created",
+          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+          mentions: 1,
+          status: "active",
+          date: new Date().toISOString()
+        });
+
+        memorySaved = true;
+        console.log("Memory saved to archive:", archiveName, parsed.text.slice(0, 60));
+      }
+    } catch (e) {
+      console.error("Memory classification failed:", e.message);
+    }
+
+    // Save full state (temporal + any new archive entry) in one write
     await saveState(store, state);
 
-    // Return response immediately - don't wait for memory save
-    const response = {
+    return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({
         role: "assistant",
         content: assistantText,
         archives_used: selectedArchives,
-        display_name: getDisplayName(working)
+        display_name: getDisplayName(working),
+        memory_saved: memorySaved
       })
     };
-
-    // Fire-and-forget memory classification
-    (async () => {
-      try {
-        const memoryRes = await fetch(ANTHROPIC_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": anthropicKey,
-            "anthropic-version": "2023-06-01"
-          },
-          body: JSON.stringify({
-            model: process.env.SENNA_MODEL || "claude-sonnet-4-20250514",
-            max_tokens: 350,
-            messages: [{ role: "user", content: buildMemoryPrompt(userText, assistantText) }]
-          })
-        });
-
-        const memoryData = await memoryRes.json();
-        let rawMemory = extractText(memoryData).trim();
-        if (rawMemory.startsWith("```")) {
-          rawMemory = rawMemory.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "").trim();
-        }
-
-        const parsed = JSON.parse(rawMemory);
-        if (parsed.save_memory && parsed.text) {
-          // Reload fresh state to avoid overwriting concurrent changes
-          const freshState = await loadState(store);
-          const freshArchives = freshState.archives;
-          const freshWorking = freshState.working_memory;
-
-          const archiveName = parsed.archive || "public";
-          if (!freshArchives[archiveName]) freshArchives[archiveName] = [];
-          freshArchives[archiveName].unshift({
-            id: `entry_${Date.now()}`,
-            text: parsed.text,
-            archive: archiveName,
-            origin: "co-created",
-            type: parsed.type || "idea",
-            tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-            date: new Date().toISOString()
-          });
-
-          const bucket = parsed.bucket || "active_threads";
-          if (!freshWorking[bucket]) freshWorking[bucket] = [];
-          freshWorking[bucket].unshift({
-            id: `wm_${Date.now()}`,
-            text: parsed.text,
-            origin: "co-created",
-            tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-            mentions: 1,
-            status: "active",
-            date: new Date().toISOString()
-          });
-
-          await saveState(store, freshState);
-          console.log("Memory saved to archive:", archiveName, parsed.text.slice(0, 60));
-        }
-      } catch (e) {
-        console.error("Background memory save failed:", e.message);
-      }
-    })();
-
-    return response;
   } catch (error) {
     return {
       statusCode: 500,
