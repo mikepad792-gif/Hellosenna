@@ -588,6 +588,7 @@
 
         <div class="top-actions">
           <button id="reflectBtn" class="archive-toggle" style="display:none;">Reflect</button>
+          <button id="exitAdminBtn" class="archive-toggle" style="display:none;">Exit</button>
           <button id="resetBtn" class="archive-toggle" style="display:none;">Reset</button>
           <button id="archiveToggle" class="archive-toggle">Archive</button>
         </div>
@@ -741,6 +742,8 @@
 
     function updateAdminUI() {
   const visible = !!mikeSecret;
+  const exitBtn = document.getElementById("exitAdminBtn");
+  if (exitBtn) exitBtn.style.display = visible ? "inline-block" : "none";
   reflectBtn.style.display = visible ? "inline-block" : "none";
   resetBtn.style.display = visible ? "inline-block" : "none";
 }
@@ -898,7 +901,7 @@
 
 async function loadArchiveState() {
   try {
-    const res = await fetch("/.netlify/functions/archive");
+    const res = await fetch("/.netlify/functions/archive?t=" + Date.now());
     const data = await res.json();
 
     archiveState = data || { archives: {}, working_memory: {} };
@@ -1217,6 +1220,13 @@ async function sendMessage() {
     fileBtn.addEventListener("click", openFilePicker);
     mobileOverlay.addEventListener("click", closeArchive);
     reflectBtn.addEventListener("click", triggerReflection);
+    document.getElementById("exitAdminBtn").addEventListener("click", () => {
+      mikeSecret = "";
+      localStorage.removeItem("mike_secret");
+      updateAdminUI();
+      updateStatus("Admin mode exited.");
+      setTimeout(() => updateStatus(""), 2000);
+    });
     resetBtn.addEventListener("click", resetSennaMemory);
 
 
