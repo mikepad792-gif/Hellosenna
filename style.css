@@ -1,0 +1,290 @@
+/* =============================================
+   SENNA — style.css
+   Restores the clean, unified layout.
+   Link AFTER the inline <style> block:
+   <link rel="stylesheet" href="style.css" />
+   ============================================= */
+
+
+/* ── Composer: unified input bar ────────────── */
+
+.composer-row {
+  gap: 0;
+  align-items: stretch;
+  background: #0d0b08;
+  border: 1px solid #2c2114;
+  transition: border-color 0.2s ease;
+}
+
+.composer-row:focus-within {
+  border-color: #5a4324;
+}
+
+.input {
+  border: none;
+  background: transparent;
+  min-height: 52px;
+  padding: 13px 14px;
+  font-size: 18px;
+}
+
+.input:focus {
+  border-color: transparent;
+  outline: none;
+}
+
+/* File button — small circle on the left feel */
+.file-btn {
+  order: -1;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  min-width: 42px;
+  width: 42px;
+  height: auto;
+  padding: 0;
+  font-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #1f1911;
+  transition: color 0.16s ease;
+}
+
+.file-btn::after {
+  content: "◯";
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-dim);
+  transition: color 0.16s ease;
+}
+
+.file-btn:hover {
+  background: transparent;
+  border-color: #1f1911;
+}
+
+.file-btn:hover::after {
+  color: var(--gold-soft);
+}
+
+/* Send button — lowercase, integrated */
+.send {
+  border: none;
+  border-left: 1px solid #1f1911;
+  background: transparent;
+  color: var(--gold-dim);
+  font-size: 14px;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  min-width: 72px;
+  height: auto;
+  padding: 0 18px;
+  transition: color 0.16s ease;
+}
+
+.send:hover:not(:disabled) {
+  background: transparent;
+  border-color: #1f1911;
+  color: var(--gold);
+}
+
+.send:disabled {
+  opacity: 0.3;
+}
+
+
+/* ── Composer hint ──────────────────────────── */
+
+.composer-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #332a1a;
+  letter-spacing: 0.06em;
+}
+
+
+/* ── Status bar ─────────────────────────────── */
+
+.status-bar {
+  font-size: 12px;
+  color: #5a4627;
+}
+
+
+/* ── Messages ───────────────────────────────── */
+
+.msg {
+  padding: 22px 0;
+  border-bottom: 1px solid rgba(196, 154, 87, 0.07);
+}
+
+.msg:last-child {
+  border-bottom: none;
+}
+
+.msg-who {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--gold-dim);
+  margin-bottom: 6px;
+}
+
+.msg.user .msg-who {
+  color: #4a3b24;
+}
+
+.msg-mark {
+  width: 34px;
+  min-width: 34px;
+  font-size: 16px;
+}
+
+.msg-mark.assistant {
+  font-size: 15px;
+}
+
+.msg-text {
+  font-size: 19px;
+  line-height: 1.65;
+}
+
+
+/* ── Topbar refinements ─────────────────────── */
+
+.title {
+  font-size: 25px;
+  letter-spacing: 0.015em;
+}
+
+.subtitle {
+  margin-top: 5px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: #3d2f1b;
+}
+
+
+/* ── Archive toggle & top buttons ───────────── */
+
+.archive-toggle {
+  font-size: 10px;
+  padding: 6px 12px;
+  letter-spacing: 0.12em;
+}
+
+
+/* ── Thinking indicator ─────────────────────── */
+
+.thinking {
+  padding: 12px 0 6px 50px;
+  font-size: 16px;
+}
+
+
+/* ── Keep This button (archive action) ──────── */
+
+.msg-meta .pill,
+.keep-btn {
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.msg-meta .pill:hover,
+.keep-btn:hover {
+  color: var(--gold);
+  border-color: #4e3920;
+}
+
+
+/* ── Empty state ────────────────────────────── */
+
+.empty-mark {
+  font-size: 26px;
+  color: #2a1f12;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-size: 22px;
+  color: #4a3820;
+}
+
+.empty-note {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+
+/* ── Scrollbar refinement ───────────────────── */
+
+.messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: #1a1309;
+  border-radius: 10px;
+}
+
+.messages::-webkit-scrollbar-thumb:hover {
+  background: #2a1f12;
+}
+
+
+/* ── File attachment pills ──────────────────── */
+
+.file-pill {
+  font-size: 12px;
+  color: var(--gold-dim);
+  padding: 2px 0;
+}
+
+
+/* ── Mobile ─────────────────────────────────── */
+
+@media (max-width: 920px) {
+
+  .composer-inner {
+    padding: 12px 14px 14px;
+  }
+
+  .input {
+    font-size: 16px;
+    min-height: 48px;
+    padding: 12px;
+  }
+
+  .send {
+    min-width: 60px;
+    font-size: 13px;
+    padding: 0 14px;
+  }
+
+  .file-btn {
+    min-width: 38px;
+    width: 38px;
+  }
+
+  .file-btn::after {
+    font-size: 16px;
+  }
+
+  .msg-text {
+    font-size: 17px;
+  }
+
+  .title {
+    font-size: 21px;
+  }
+
+  .subtitle {
+    font-size: 11px;
+  }
+
+  .messages {
+    padding: 10px 14px 18px;
+  }
+}
