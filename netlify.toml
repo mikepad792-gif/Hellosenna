@@ -1,4 +1,13 @@
+[build]
+  functions = "netlify/functions"
+  command = "npm install"
+
 [functions]
+  node_bundler = "esbuild"
   included_files = ["data/**"]
 
-# Other configurations...
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
+[functions."scheduler"]
+  schedule = "0 0,12 * * *"
