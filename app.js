@@ -701,6 +701,51 @@
   }
 
   /* ========================================
+     URL PARAM PRE-FILL
+     Handles ?question=q_001, ?tension=t_001,
+     or ?context=raw+text from archive links.
+     ======================================== */
+  async function handleUrlParams() {
+    var params = new URLSearchParams(window.location.search);
+    var questionId = params.get("question");
+    var tensionId  = params.get("tension");
+    var contextText = params.get("context");
+
+    /* Direct text — no lookup needed */
+    if (contextText) {
+      $input.value = contextText;
+      $input.dispatchEvent(new Event("input"));
+      $input.focus();
+      return;
+    }
+
+    /* ID-based lookup — fetch sidebar data */
+    var targetId = questionId || tensionId;
+    if (!targetId) return;
+
+    try {
+      var res = await fetch(
+        ARCHIVE_URL + "?view=sidebar&user_id=" + encodeURIComponent(userId)
+      );
+      if (!res.ok) return;
+      var data = await res.json();
+
+      var pool = [];
+      if (data.active_questions) pool = pool.concat(data.active_questions);
+      if (data.active_tensions)  pool = pool.concat(data.active_tensions);
+
+      var match = pool.find(function (item) { return item.id === targetId; });
+      if (match && match.text) {
+        $input.value = match.text;
+        $input.dispatchEvent(new Event("input"));
+        $input.focus();
+      }
+    } catch (e) {
+      /* Silently fail — chat still works */
+    }
+  }
+
+  /* ========================================
      INIT
      ======================================== */
   function init() {
@@ -716,6 +761,8 @@
     initFileAttachments();
     initAdmin();
     loadSidebar();
+
+    handleUrlParams();
 
     $input.focus();
   }
