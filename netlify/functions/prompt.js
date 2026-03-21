@@ -108,7 +108,8 @@ function buildChatSystemPrompt({
   displayName,
   workingMemory,
   archiveEntries,
-  citationNotifications
+  citationNotifications,
+  repoPapers,
 }) {
   const ts = temporal || {};
   const returnGap = classifyReturnGap(ts.last_user_message_at);
@@ -213,6 +214,25 @@ function buildChatSystemPrompt({
       entryLines.push(`  [${e.category}] ${e.text}${tags ? ` (${tags})` : ""}`);
     }
     sections.push(entryLines.join("\n"));
+  }
+
+  // ── Repository context (papers with tag overlap only) ──
+
+  const papers = repoPapers || [];
+  if (papers.length > 0) {
+    const repoLines = [
+      "Repository context — papers potentially relevant to this conversation:",
+      "(Reference these naturally if they genuinely fit. Do not force citations.)",
+    ];
+    for (const p of papers) {
+      const tags = (p.tags || []).join(", ");
+      repoLines.push(`  Title: ${p.title}`);
+      if (p.author) repoLines.push(`  Author: ${p.author}`);
+      if (p.abstract) repoLines.push(`  Abstract: ${p.abstract}`);
+      if (tags) repoLines.push(`  Tags: ${tags}`);
+      repoLines.push("");
+    }
+    sections.push(repoLines.join("\n"));
   }
 
   // ── Name recognition marker instruction ──
