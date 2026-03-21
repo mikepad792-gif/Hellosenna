@@ -260,9 +260,6 @@ function selectEntries(archiveEntries, workingMemory, userText) {
 // ─── Name Detection (Part 8.1 Step 4) ───────────────────────
 
 function detectDisplayName(userText) {
-  // Ensure userText is a string
-  const text = String(userText || "");
-  
   const patterns = [
     /\bmy name is\s+(\w+)/i,
     /\bI am\s+(\w+)/i,
@@ -374,19 +371,10 @@ exports.handler = async (event) => {
     // The full messages array is passed to the LLM for conversational context.
     // This is spec-compliant (Part 10.1: "keyword matching against user_text")
     // but means retrieval is blind to topic buildup across earlier messages.
-        const userMessages = messages.filter((m) => m.role === "user");
-    let userText = "";
-    if (userMessages.length > 0) {
-      const lastMsg = userMessages[userMessages.length - 1].content;
-      if (typeof lastMsg === "string") {
-        userText = lastMsg;
-      } else if (Array.isArray(lastMsg)) {
-        const textParts = lastMsg.filter(part => part.type === "text").map(part => part.text);
-        userText = textParts.join("\n");
-      } else {
-        userText = String(lastMsg || "");
-      }
-    }
+    const userMessages = messages.filter((m) => m.role === "user");
+    const userText = userMessages.length > 0
+      ? userMessages[userMessages.length - 1].content
+      : "";
 
     if (!userText) {
       return {

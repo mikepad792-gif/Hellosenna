@@ -379,6 +379,28 @@ async function handlePost(store, body) {
     return respond(200, { ok: true, entry_id, category, retired: true });
   }
 
+  // ── reset_archive ───────────────────────────────────────────────────────
+  // Clears all archive categories to empty arrays.
+  // Requires BOTH admin secret AND a separate ARCHIVE_RESET_SECRET env var.
+  // Preserves meta, working_memory, and visitors.
+  if (action === "reset_archive") {
+    const { secret, archive_reset_secret } = body;
+    if (secret !== process.env.MIKE_SECRET) {
+      return respond(403, { error: "Unauthorized" });
+    }
+    if (!process.env.ARCHIVE_RESET_SECRET || archive_reset_secret !== process.env.ARCHIVE_RESET_SECRET) {
+      return respond(403, { error: "Invalid archive reset secret" });
+    }
+
+    const writes = [];
+    for (const category of ARCHIVE_CATEGORIES) {
+      writes.push({ key: `archive:${category}`, data: [] });
+    }
+
+    await saveMultiple(store, writes);
+    return respond(200, { ok: true, reset_archive: true, categories_cleared: ARCHIVE_CATEGORIES.length });
+  }
+
   // ── reset_all ──────────────────────────────────────────────────────────
   if (action === "reset_all") {
     const { secret } = body;
