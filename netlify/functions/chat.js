@@ -27,9 +27,20 @@ const {
   loadIdentityDocuments,
 } = require("./prompt");
 
-// Issue 9: Read identity documents once on cold start, reuse on warm invocations.
-// These files don't change at runtime — no reason to hit disk per request.
-const IDENTITY_DOCS = loadIdentityDocuments();
+// Identity documents loaded lazily on first request, not at module level.
+// Netlify's bundler may not resolve file paths correctly at module load time.
+let IDENTITY_DOCS = null;
+function getIdentityDocs() {
+  if (!IDENTITY_DOCS) {
+    try {
+      IDENTITY_DOCS = loadIdentityDocuments();
+    } catch (e) {
+      console.error("Failed to load identity documents:", e.message);
+      IDENTITY_DOCS = { orientation: "", constitution: "", disposition: "" };
+    }
+  }
+  return IDENTITY_DOCS;
+}
 
 // ─── Constants ───────────────────────────────────────────────
 
@@ -461,9 +472,9 @@ exports.handler = async (event) => {
     // ── 6. Build system prompt ──
 
     const systemPrompt = buildChatSystemPrompt({
-      orientation: IDENTITY_DOCS.orientation,
-      constitution: IDENTITY_DOCS.constitution,
-      disposition: IDENTITY_DOCS.disposition,
+      orientation: getIdentityDocs().orientation,
+      constitution: getIdentityDocs().constitution,
+      disposition: getIdentityDocs().disposition,
       temporal: meta.temporal_state,
       visitor: userId ? visitorProfile : null,
       displayName,

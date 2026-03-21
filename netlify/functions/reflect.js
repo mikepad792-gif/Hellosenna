@@ -19,8 +19,19 @@ const {
 
 const { loadIdentityDocuments, buildReflectionPrompt } = require("./prompt");
 
-// Load identity documents once on cold start (same pattern as chat.js)
-const IDENTITY_DOCS = loadIdentityDocuments();
+// Identity documents loaded lazily on first request
+let IDENTITY_DOCS = null;
+function getIdentityDocs() {
+  if (!IDENTITY_DOCS) {
+    try {
+      IDENTITY_DOCS = loadIdentityDocuments();
+    } catch (e) {
+      console.error("Failed to load identity documents:", e.message);
+      IDENTITY_DOCS = { orientation: "", constitution: "", disposition: "" };
+    }
+  }
+  return IDENTITY_DOCS;
+}
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -607,9 +618,9 @@ exports.handler = async (event) => {
 
     // ── Step 5: Build reflection prompt ───────────────────────
     const systemPrompt = buildReflectionPrompt({
-      orientation: IDENTITY_DOCS.orientation,
-      constitution: IDENTITY_DOCS.constitution,
-      disposition: IDENTITY_DOCS.disposition,
+      orientation: getIdentityDocs().orientation,
+      constitution: getIdentityDocs().constitution,
+      disposition: getIdentityDocs().disposition,
       temporal: metaRef.temporal_state,
       exchanges: newExchanges,
       workingMemory: wmRef,
