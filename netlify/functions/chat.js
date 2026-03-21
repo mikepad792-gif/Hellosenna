@@ -4,6 +4,8 @@
 // Spec reference: Master Build Parts 4, 5, 7, 8, 10, 11, 16.1
 // ─────────────────────────────────────────────────────────────
 
+const { getStore } = require("@netlify/blobs");
+
 const {
   initStore,
   loadMeta,
@@ -342,6 +344,43 @@ function generateEntryId() {
   return `entry_${ts}_${hex}`;
 }
 
+// ─── Repository: Load + Select (senna-repository store) ──────
+
+const REPO_STORE_NAME = "senna-repository";
+const MAX_REPO_PAPERS = 3;
+
+async function loadRepoIndex(repoStore) {
+  try {
+    const raw = await repoStore.get("repo_index");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null; // repo is optional — never block chat
+  }
+}
+
+// Returns up to MAX_REPO_PAPERS papers whose tags overlap with words
+// in the user's message. Returns [] when there is no overlap.
+function selectRepoPapers(repoIndex, userText) {
+  if (!repoIndex || !Array.isArray(repoIndex.papers)) return [];
+
+  const lower = userText.toLowerCase();
+  // Split on non-word chars; keep tokens longer than 3 chars to avoid noise
+  const userWords = new Set(lower.split(/\W+/).filter((w) => w.length > 3));
+
+  const matched = repoIndex.papers.filter((paper) => {
+    const tags = (paper.tags || []).map((t) => t.toLowerCase());
+    return tags.some((tag) => userWords.has(tag) || lower.includes(tag));
+  });
+
+  return matched.slice(0, MAX_REPO_PAPERS).map((paper) => ({
+    title: paper.title || "Untitled",
+    author: paper.author || paper.authors || "",
+    abstract: (paper.abstract || "").slice(0, 250),
+    tags: paper.tags || [],
+  }));
+}
+
 // ═════════════════════════════════════════════════════════════
 // HANDLER
 // ═════════════════════════════════════════════════════════════
@@ -386,6 +425,8 @@ exports.handler = async (event) => {
 
     // ── 2. Init store + parallel load ──
     const store = initStore(event);
+    // connectLambda is called inside initStore; getStore is safe to call after
+    const repoStore = getStore(REPO_STORE_NAME);
 
     const categoriesToLoad = selectCategories(userText);
 
@@ -393,6 +434,7 @@ exports.handler = async (event) => {
       { key: "meta", loader: () => loadMeta(store) },
       { key: "working_memory", loader: () => loadWorkingMemory(store) },
       { key: "visitors", loader: () => loadVisitors(store) },
+      { key: "repo_index", loader: () => loadRepoIndex(repoStore) },
       ...categoriesToLoad.map((cat) => ({
         key: `archive:${cat}`,
         loader: () => loadArchive(store, cat),
@@ -404,7 +446,11 @@ exports.handler = async (event) => {
     const meta = loadResults[0];
     const workingMemory = loadResults[1];
     const visitors = loadResults[2];
-    const archiveArrays = loadResults.slice(3); // parallel arrays matching categoriesToLoad
+    const repoIndex = loadResults[3];
+    const archiveArrays = loadResults.slice(4); // parallel arrays matching categoriesToLoad
+
+    // ── 2a. Select relevant repo papers (tag overlap only) ──
+    const repoPapers = selectRepoPapers(repoIndex, userText);
 
     // ── 3. Extract visitor profile ──
     let visitorProfile = null;
@@ -471,6 +517,8 @@ exports.handler = async (event) => {
       archiveEntries: selectedEntries,
       // Issue 4: Pass citation notifications so Senna can acknowledge them
       citationNotifications: citationNotice,
+      // Repository papers with tag overlap (empty array = no injection)
+      repoPapers,
     });
 
     // ── 7. Call Anthropic → Senna's reply ──
