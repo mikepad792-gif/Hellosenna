@@ -5,8 +5,13 @@
 
 const { getStore, connectLambda } = require("@netlify/blobs");
 
-// Ensure fetch works in all Node runtimes (Node 16/17 lack global fetch)
-const fetch = global.fetch || require("node-fetch");
+// Ensure fetch works in all Node runtimes
+let fetch = global.fetch;
+if (!fetch) {
+  try { fetch = require("node-fetch"); } catch (e) {
+    console.error("No global fetch and node-fetch not available");
+  }
+}
 
 // ── Config ──────────────────────────────────────────────────
 
