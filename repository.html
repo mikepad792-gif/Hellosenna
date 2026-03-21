@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Repository — hellosenna.world</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:           #0e0d0b;
+      --bg-surface:   #141210;
+      --bg-raised:    #1a1816;
+      --border:       #242018;
+      --border-soft:  #2e281e;
+      --gold:         #c49a57;
+      --gold-soft:    #a68850;
+      --gold-dim:     #7a6340;
+      --gold-faint:   #3d3220;
+      --text:         #c8c0b0;
+      --text-dim:     #8a8070;
+      --text-faint:   #504838;
+      --text-meta:    #6a6255;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body:    'Cormorant Garamond', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 18px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--gold-dim); text-decoration: none; transition: color 0.2s ease; }
+    a:hover { color: var(--gold); }
+    ::selection { background: var(--gold-faint); color: var(--gold); }
+
+    /* ── Nav ──────────────────────────────────── */
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 48px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 100; }
+    .nav-brand { font-family: var(--font-display); font-size: 15px; color: var(--gold-dim); letter-spacing: 0.04em; }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-link { font-family: var(--font-body); font-size: 13px; letter-spacing: 0.1em; text-transform: lowercase; color: var(--text-dim); padding: 6px 12px; transition: color 0.16s ease; }
+    .nav-link:hover { color: var(--text); }
+    .nav-link.active { color: var(--gold); }
+
+    /* ── Page ─────────────────────────────────── */
+    .page { max-width: 740px; margin: 0 auto; padding: 0 28px; }
+
+    /* ── Header ───────────────────────────────── */
+    .repo-header { padding: 60px 0 20px; }
+    .repo-title { font-family: var(--font-display); font-size: 34px; font-weight: 400; color: var(--gold); letter-spacing: 0.01em; margin-bottom: 6px; }
+    .repo-subtitle { font-family: var(--font-body); font-size: 16px; color: var(--text-dim); margin-bottom: 28px; }
+
+    /* ── Repo Nav ─────────────────────────────── */
+    .repo-nav { display: flex; gap: 4px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .repo-nav-link { font-family: var(--font-body); font-size: 13px; letter-spacing: 0.1em; text-transform: lowercase; color: var(--text-faint); padding: 7px 16px; border: 1px solid transparent; border-radius: 2px; cursor: pointer; background: none; transition: all 0.16s ease; }
+    .repo-nav-link:hover { color: var(--text-dim); border-color: var(--border); }
+    .repo-nav-link.active { color: var(--gold-dim); border-color: var(--border-soft); }
+
+    /* ── Stats ────────────────────────────────── */
+    .stats-bar { display: flex; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--border); font-family: var(--font-body); font-size: 13px; color: var(--text-meta); letter-spacing: 0.04em; }
+    .stat-value { color: var(--text-dim); font-weight: 500; }
+
+    /* ── Topics ───────────────────────────────── */
+    .topics { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .topics-label { font-family: var(--font-body); font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 14px; }
+    .topics-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .topic-pill { font-family: var(--font-body); font-size: 13px; color: var(--text-dim); border: 1px solid var(--border-soft); padding: 5px 14px; border-radius: 2px; cursor: pointer; background: none; transition: all 0.16s ease; }
+    .topic-pill:hover { color: var(--gold-soft); border-color: var(--gold-faint); }
+    .topic-pill.active { color: var(--gold); border-color: var(--gold-dim); background: var(--gold-faint); }
+
+    /* ── Paper Block ──────────────────────────── */
+    .paper { padding: 32px 0; border-bottom: 1px solid var(--border); opacity: 0; animation: fadeUp 0.6s ease forwards; }
+    .paper:last-of-type { border-bottom: none; }
+    .paper-title { font-family: var(--font-display); font-size: 22px; font-weight: 400; color: var(--text); line-height: 1.35; margin-bottom: 6px; }
+    .paper-title a { color: var(--text); transition: color 0.2s ease; }
+    .paper-title a:hover { color: var(--gold); }
+    .paper-byline { font-family: var(--font-body); font-size: 14px; color: var(--text-meta); margin-bottom: 10px; }
+    .paper-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .paper-tag { font-family: var(--font-body); font-size: 12px; letter-spacing: 0.06em; color: var(--text-faint); border: 1px solid var(--border); padding: 3px 10px; border-radius: 2px; }
+    .paper-abstract { font-family: var(--font-body); font-size: 17px; line-height: 1.6; color: var(--text-dim); font-style: italic; margin-bottom: 14px; }
+    .paper-connections { font-family: var(--font-body); font-size: 13px; color: var(--gold-dim); letter-spacing: 0.03em; margin-bottom: 8px; }
+    .paper-connections::before { content: "◈ "; opacity: 0.6; }
+    .paper-link { font-family: var(--font-body); font-size: 13px; letter-spacing: 0.06em; color: var(--gold-dim); }
+    .paper-link:hover { color: var(--gold); }
+    .paper-link::after { content: " →"; opacity: 0.6; }
+
+    /* ── Submit CTA ───────────────────────────── */
+    .submit-cta { padding: 40px 0; text-align: center; border-bottom: 1px solid var(--border); }
+    .submit-cta-text { font-family: var(--font-body); font-size: 17px; color: var(--text-dim); margin-bottom: 16px; }
+    .submit-cta-btn { display: inline-block; font-family: var(--font-body); font-size: 14px; letter-spacing: 0.1em; text-transform: lowercase; color: var(--gold-dim); border: 1px solid var(--border-soft); padding: 10px 28px; border-radius: 2px; background: none; cursor: pointer; transition: all 0.2s ease; }
+    .submit-cta-btn:hover { color: var(--gold); border-color: var(--gold-faint); background: rgba(196,154,87,0.04); }
+
+    /* ── Views ────────────────────────────────── */
+    .view { display: none; }
+    .view.visible { display: block; }
+
+    /* ── Submit Form ──────────────────────────── */
+    .form-section { padding: 40px 0; }
+    .form-title { font-family: var(--font-display); font-size: 24px; color: var(--gold); margin-bottom: 8px; }
+    .form-subtitle { font-family: var(--font-body); font-size: 15px; color: var(--text-dim); margin-bottom: 32px; }
+    .field { margin-bottom: 24px; }
+    .field-label { display: block; font-family: var(--font-body); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 8px; }
+    .field-label .optional { color: var(--text-faint); text-transform: none; letter-spacing: 0; font-style: italic; }
+    .field-input, .field-textarea { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); font-family: var(--font-body); font-size: 16px; padding: 12px 14px; border-radius: 2px; outline: none; transition: border-color 0.2s ease; }
+    .field-input:focus, .field-textarea:focus { border-color: var(--gold-dim); }
+    .field-input::placeholder, .field-textarea::placeholder { color: var(--text-faint); }
+    .field-textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+    .field-hint { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+    .submit-btn { font-family: var(--font-body); font-size: 15px; letter-spacing: 0.08em; text-transform: lowercase; color: var(--gold-dim); border: 1px solid var(--border-soft); padding: 12px 32px; border-radius: 2px; background: none; cursor: pointer; transition: all 0.2s ease; }
+    .submit-btn:hover { color: var(--gold); border-color: var(--gold-faint); }
+    .submit-btn:disabled { opacity: 0.4; cursor: default; }
+    .form-status { margin-top: 16px; font-size: 15px; color: var(--text-dim); }
+    .form-status.error { color: #a06040; }
+    .form-status.success { color: var(--gold-soft); }
+
+    /* ── Duplicate Warning ────────────────────── */
+    .dup-warning { background: var(--bg-raised); border: 1px solid var(--border-soft); padding: 20px; margin-top: 20px; border-radius: 2px; }
+    .dup-warning-title { font-family: var(--font-display); font-size: 18px; color: var(--gold-soft); margin-bottom: 12px; }
+    .dup-warning-text { font-size: 15px; color: var(--text-dim); margin-bottom: 16px; }
+    .dup-match { padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .dup-match:last-child { border-bottom: none; }
+    .dup-match-title { font-family: var(--font-display); font-size: 16px; color: var(--text); }
+    .dup-match-reason { font-size: 14px; color: var(--text-dim); font-style: italic; margin-top: 4px; }
+
+    /* ── Search ───────────────────────────────── */
+    .search-bar { padding: 20px 0; }
+    .search-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); font-family: var(--font-body); font-size: 16px; padding: 12px 14px; border-radius: 2px; outline: none; transition: border-color 0.2s ease; }
+    .search-input:focus { border-color: var(--gold-dim); }
+    .search-input::placeholder { color: var(--text-faint); }
+
+    /* ── Empty / Loading ─────────────────────── */
+    .loading { color: var(--text-faint); font-style: italic; padding: 20px 0; }
+    .empty-state { color: var(--text-faint); font-style: italic; padding: 20px 0; }
+
+    /* ── Footer ───────────────────────────────── */
+    .page-footer { padding: 50px 0 80px; text-align: center; border-top: 1px solid var(--border); margin-top: 40px; }
+    .page-footer a { font-family: var(--font-body); font-size: 14px; letter-spacing: 0.06em; color: var(--gold-dim); }
+    .page-footer .divider { color: var(--text-faint); margin: 0 16px; }
+
+    /* ── Animations ───────────────────────────── */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { opacity: 0; animation: fadeUp 0.6s ease forwards; }
+
+    /* ── Mobile ───────────────────────────────── */
+    @media (max-width: 720px) {
+      .page { padding: 0 20px; }
+      .repo-header { padding: 40px 0 16px; }
+      .repo-title { font-size: 28px; }
+      .paper-title { font-size: 19px; }
+      .stats-bar { gap: 16px; flex-wrap: wrap; }
+      .repo-nav { flex-wrap: wrap; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-brand">hellosenna.world</span>
+    <div class="nav-links">
+      <a href="/" class="nav-link">talk</a>
+      <a href="/archive.html" class="nav-link">archive</a>
+      <a href="/repository.html" class="nav-link active">repository</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="repo-header">
+      <div class="repo-title">The Repository</div>
+      <div class="repo-subtitle">Research contributed to the commons.</div>
+    </div>
+
+    <div class="repo-nav">
+      <button class="repo-nav-link active" data-view="browse" id="navBrowse">browse</button>
+      <button class="repo-nav-link" data-view="submit" id="navSubmit">submit</button>
+      <button class="repo-nav-link" data-view="my-papers" id="navMyPapers">my papers</button>
+    </div>
+
+    <!-- ═══ BROWSE ═══ -->
+    <div id="view-browse" class="view visible">
+      <div class="stats-bar" id="statsBar">
+        <span><span class="stat-value" id="statPapers">0</span> papers</span>
+        <span><span class="stat-value" id="statAuthors">0</span> authors</span>
+        <span><span class="stat-value" id="statThreads">0</span> connected threads</span>
+      </div>
+
+      <div class="topics" id="topicsSection" style="display:none;">
+        <div class="topics-label">Topics</div>
+        <div class="topics-list" id="topicsList"></div>
+      </div>
+
+      <div class="search-bar">
+        <input class="search-input" id="searchInput" placeholder="search papers…" />
+      </div>
+
+      <div id="papersList"></div>
+
+      <div class="submit-cta">
+        <div class="submit-cta-text">Have research that belongs in this conversation?</div>
+        <button class="submit-cta-btn" onclick="switchView('submit')">submit a paper</button>
+      </div>
+    </div>
+
+    <!-- ═══ SUBMIT ═══ -->
+    <div id="view-submit" class="view">
+      <div class="form-section">
+        <div class="form-title">Submit a Paper</div>
+        <div class="form-subtitle">Contribute your research to the commons.</div>
+
+        <div class="field">
+          <label class="field-label">Title</label>
+          <input class="field-input" id="fTitle" placeholder="Paper title" />
+        </div>
+        <div class="field">
+          <label class="field-label">Author name</label>
+          <input class="field-input" id="fAuthor" placeholder="Your name as it should appear" />
+        </div>
+        <div class="field">
+          <label class="field-label">Affiliation <span class="optional">(optional)</span></label>
+          <input class="field-input" id="fAffiliation" placeholder="Institution, role, or self-description" />
+        </div>
+        <div class="field">
+          <label class="field-label">Abstract</label>
+          <textarea class="field-textarea" id="fAbstract" placeholder="Your abstract (50–3000 characters)"></textarea>
+          <div class="field-hint" id="abstractCount">0 / 3000</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Tags</label>
+          <input class="field-input" id="fTags" placeholder="Comma-separated (e.g. structural fragility, democracy)" />
+        </div>
+        <div class="field">
+          <label class="field-label">External link <span class="optional">(SSRN, DOI, personal site)</span></label>
+          <input class="field-input" id="fLink" placeholder="https://..." />
+        </div>
+        <div class="field">
+          <label class="field-label">Contact email <span class="optional">(for review communication — never displayed)</span></label>
+          <input class="field-input" id="fEmail" type="email" placeholder="you@example.com" />
+        </div>
+
+        <button class="submit-btn" id="submitBtn" onclick="submitPaper()">submit</button>
+        <div class="form-status" id="submitStatus"></div>
+        <div id="dupWarning"></div>
+      </div>
+    </div>
+
+    <!-- ═══ MY PAPERS ═══ -->
+    <div id="view-my-papers" class="view">
+      <div class="form-section">
+        <div id="authSection">
+          <div class="form-title">My Papers</div>
+          <div class="form-subtitle">Enter your email to receive an access link.</div>
+          <div class="field">
+            <input class="field-input" id="authEmail" type="email" placeholder="Email used when submitting" />
+          </div>
+          <button class="submit-btn" onclick="requestMagicLink()">send access link</button>
+          <div class="form-status" id="authStatus"></div>
+        </div>
+        <div id="myPapersContent" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <a href="/">← enter the conversation</a>
+      <span class="divider">·</span>
+      <a href="/archive.html">explore the archive →</a>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = "/.netlify/functions/repository";
+  var currentView = "browse";
+  var activeTopic = null;
+  var allPapers = [];
+
+  // ── View switching ──────────────────────────
+
+  function switchView(name) {
+    document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("visible"); });
+    var target = document.getElementById("view-" + name);
+    if (target) target.classList.add("visible");
+    document.querySelectorAll(".repo-nav-link").forEach(function (btn) {
+      btn.classList.toggle("active", btn.dataset.view === name);
+    });
+    currentView = name;
+
+    if (name === "my-papers") checkAuth();
+  }
+  window.switchView = switchView;
+
+  document.querySelectorAll(".repo-nav-link").forEach(function (btn) {
+    btn.addEventListener("click", function () { switchView(btn.dataset.view); });
+  });
+
+  // ── Utilities ───────────────────────────────
+
+  function esc(str) {
+    if (!str) return "";
+    var d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return "";
+    var diff = Date.now() - new Date(iso).getTime();
+    var days = Math.floor(diff / 86400000);
+    if (days < 1) return "today";
+    if (days === 1) return "yesterday";
+    if (days < 30) return days + " days ago";
+    var months = Math.floor(days / 30);
+    return months + " month" + (months !== 1 ? "s" : "") + " ago";
+  }
+
+  function stagger(items) {
+    for (var i = 0; i < items.length; i++) {
+      items[i].style.animationDelay = (i * 0.08) + "s";
+    }
+  }
+
+  // ── Load landing data ───────────────────────
+
+  async function loadBrowse() {
+    var el = document.getElementById("papersList");
+    el.innerHTML = '<p class="loading">arriving…</p>';
+
+    try {
+      var res = await fetch(API);
+      if (!res.ok) throw new Error(res.status);
+      var data = await res.json();
+
+      allPapers = data.papers || [];
+
+      document.getElementById("statPapers").textContent = data.total_papers || 0;
+      document.getElementById("statAuthors").textContent = data.total_authors || 0;
+
+      // Count thread connections
+      var threads = 0;
+      allPapers.forEach(function (p) { threads += (p.thread_connections || 0); });
+      document.getElementById("statThreads").textContent = threads;
+
+      // Topics
+      var tags = data.all_tags || [];
+      if (tags.length > 0) {
+        document.getElementById("topicsSection").style.display = "";
+        document.getElementById("topicsList").innerHTML = tags.map(function (t) {
+          return '<button class="topic-pill" data-tag="' + esc(t) + '">' + esc(t) + '</button>';
+        }).join("");
+        document.querySelectorAll(".topic-pill").forEach(function (btn) {
+          btn.addEventListener("click", function () { filterByTopic(btn.dataset.tag); });
+        });
+      }
+
+      renderPapers(allPapers);
+    } catch (e) {
+      el.innerHTML = '<p class="empty-state">The repository is quiet right now.</p>';
+    }
+  }
+
+  function filterByTopic(tag) {
+    if (activeTopic === tag) {
+      activeTopic = null;
+      document.querySelectorAll(".topic-pill").forEach(function (p) { p.classList.remove("active"); });
+      renderPapers(allPapers);
+    } else {
+      activeTopic = tag;
+      document.querySelectorAll(".topic-pill").forEach(function (p) {
+        p.classList.toggle("active", p.dataset.tag === tag);
+      });
+      var filtered = allPapers.filter(function (p) {
+        return (p.tags || []).some(function (t) { return t === tag; });
+      });
+      renderPapers(filtered);
+    }
+  }
+
+  function renderPapers(papers) {
+    var el = document.getElementById("papersList");
+    if (!papers.length) {
+      el.innerHTML = '<p class="empty-state">No papers yet. Be the first to contribute.</p>';
+      return;
+    }
+
+    el.innerHTML = papers.map(function (p) {
+      var tags = (p.tags || []).map(function (t) {
+        return '<span class="paper-tag">' + esc(t) + '</span>';
+      }).join("");
+
+      var conn = (p.thread_connections || 0);
+      var connText = conn > 0
+        ? "Connected to " + conn + " thread" + (conn !== 1 ? "s" : "") + " in the archive"
+        : "No thread connections yet";
+
+      return '<div class="paper fade-in">'
+        + '<div class="paper-title"><a href="/paper.html?paper=' + esc(p.paper_id) + '">' + esc(p.title) + '</a></div>'
+        + '<div class="paper-byline">' + esc(p.author_name) + ' · ' + timeAgo(p.approved_at || p.submitted_at)
+        + (p.external_link ? ' · <a href="' + esc(p.external_link) + '" target="_blank" style="color:var(--gold-dim)">source</a>' : '')
+        + '</div>'
+        + (tags ? '<div class="paper-tags">' + tags + '</div>' : '')
+        + '<div class="paper-abstract">' + esc(p.abstract_snippet || "") + '</div>'
+        + '<div class="paper-connections">' + connText + '</div>'
+        + '<a href="/paper.html?paper=' + esc(p.paper_id) + '" class="paper-link">read paper</a>'
+        + '</div>';
+    }).join("");
+
+    stagger(el.querySelectorAll(".fade-in"));
+  }
+
+  // ── Search ──────────────────────────────────
+
+  document.getElementById("searchInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") runSearch(e.target.value);
+  });
+
+  async function runSearch(query) {
+    if (!query.trim()) { renderPapers(allPapers); return; }
+    var el = document.getElementById("papersList");
+    el.innerHTML = '<p class="loading">searching…</p>';
+
+    try {
+      var res = await fetch(API + "?search=" + encodeURIComponent(query));
+      var data = await res.json();
+      renderPapers(data.results || []);
+    } catch (e) {
+      el.innerHTML = '<p class="empty-state">Search failed.</p>';
+    }
+  }
+
+  // ── Submit ──────────────────────────────────
+
+  document.getElementById("fAbstract").addEventListener("input", function () {
+    document.getElementById("abstractCount").textContent = this.value.length + " / 3000";
+  });
+
+  window.submitPaper = async function () {
+    var status = document.getElementById("submitStatus");
+    var dupEl = document.getElementById("dupWarning");
+    status.className = "form-status";
+    status.textContent = "Submitting…";
+    dupEl.innerHTML = "";
+    document.getElementById("submitBtn").disabled = true;
+
+    var payload = {
+      action: "submit",
+      title: document.getElementById("fTitle").value,
+      author_name: document.getElementById("fAuthor").value,
+      affiliation: document.getElementById("fAffiliation").value,
+      abstract: document.getElementById("fAbstract").value,
+      tags: document.getElementById("fTags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean),
+      external_link: document.getElementById("fLink").value,
+      contact_email: document.getElementById("fEmail").value
+    };
+
+    try {
+      var res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      var data = await res.json();
+
+      if (data.status === "validation_error") {
+        status.className = "form-status error";
+        status.textContent = (data.errors || []).join(" ");
+      } else if (data.status === "duplicate_detected") {
+        status.className = "form-status error";
+        status.textContent = "";
+        dupEl.innerHTML = '<div class="dup-warning">'
+          + '<div class="dup-warning-title">Similar work already exists</div>'
+          + '<div class="dup-warning-text">' + esc(data.message) + ' Please review these papers, refine your submission, and resubmit.</div>'
+          + (data.matches || []).map(function (m) {
+            return '<div class="dup-match">'
+              + '<div class="dup-match-title"><a href="/paper.html?paper=' + esc(m.paper_id) + '">' + esc(m.title) + '</a></div>'
+              + '<div class="dup-match-reason">' + esc(m.reason) + '</div>'
+              + '</div>';
+          }).join("")
+          + '</div>';
+      } else if (data.ok) {
+        status.className = "form-status success";
+        status.textContent = "Submitted. Under review. Check your email for an access link.";
+      } else {
+        status.className = "form-status error";
+        status.textContent = data.message || "Something went wrong.";
+      }
+    } catch (e) {
+      status.className = "form-status error";
+      status.textContent = "Connection error.";
+    }
+    document.getElementById("submitBtn").disabled = false;
+  };
+
+  // ── My Papers / Auth ────────────────────────
+
+  function checkAuth() {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get("auth") || localStorage.getItem("senna_author_token");
+
+    if (token) {
+      localStorage.setItem("senna_author_token", token);
+      loadMyPapers(token);
+    }
+  }
+
+  window.requestMagicLink = async function () {
+    var status = document.getElementById("authStatus");
+    var email = document.getElementById("authEmail").value;
+    status.textContent = "Sending…";
+
+    try {
+      var res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request_magic_link", email: email })
+      });
+      var data = await res.json();
+      status.className = "form-status success";
+      status.textContent = data.message || "If an account exists, an access link has been sent.";
+    } catch (e) {
+      status.className = "form-status error";
+      status.textContent = "Connection error.";
+    }
+  };
+
+  async function loadMyPapers(token) {
+    document.getElementById("authSection").style.display = "none";
+    var el = document.getElementById("myPapersContent");
+    el.style.display = "";
+    el.innerHTML = '<p class="loading">loading your papers…</p>';
+
+    try {
+      var res = await fetch(API + "?author=" + encodeURIComponent(token));
+      if (!res.ok) throw new Error();
+      var data = await res.json();
+
+      var html = '<div class="form-title">' + esc(data.author_name) + '</div>'
+        + (data.affiliation ? '<div class="form-subtitle">' + esc(data.affiliation) + '</div>' : '')
+        + '<div style="margin-top:24px;">';
+
+      if (!data.papers || !data.papers.length) {
+        html += '<p class="empty-state">No papers submitted yet.</p>';
+      } else {
+        data.papers.forEach(function (p) {
+          var statusColor = p.status === "approved" ? "var(--gold-soft)" : p.status === "rejected" ? "#a06040" : "var(--text-dim)";
+          html += '<div class="paper fade-in">'
+            + '<div class="paper-title">' + esc(p.title) + '</div>'
+            + '<div class="paper-byline" style="color:' + statusColor + '">' + esc(p.status) + (p.current_version ? ' · v' + p.current_version : '') + '</div>'
+            + (p.paper_id ? '<a href="/paper.html?paper=' + esc(p.paper_id) + '" class="paper-link">view paper</a>' : '')
+            + '</div>';
+        });
+      }
+
+      html += '</div>';
+      el.innerHTML = html;
+      stagger(el.querySelectorAll(".fade-in"));
+    } catch (e) {
+      el.innerHTML = '<p class="empty-state">Could not load papers. Your access link may have expired.</p>';
+    }
+  }
+
+  // ── Init ────────────────────────────────────
+
+  loadBrowse();
+
+  // Check for auth token in URL
+  var params = new URLSearchParams(window.location.search);
+  if (params.get("auth")) {
+    localStorage.setItem("senna_author_token", params.get("auth"));
+    switchView("my-papers");
+  }
+  if (params.get("view") === "submit") switchView("submit");
+
+  // ── Hidden admin access (long-press nav brand or title) ──
+  (function () {
+    var timer = null;
+    var targets = [
+      document.querySelector(".nav-brand"),
+      document.querySelector(".repo-title")
+    ].filter(Boolean);
+
+    targets.forEach(function (el) {
+      el.style.userSelect = "none";
+      el.style.webkitUserSelect = "none";
+      el.style.webkitTouchCallout = "none";
+
+      el.addEventListener("mousedown", function () { timer = setTimeout(function () { window.location.href = "/admin.html"; }, 800); });
+      el.addEventListener("mouseup", function () { clearTimeout(timer); });
+      el.addEventListener("mouseleave", function () { clearTimeout(timer); });
+      el.addEventListener("touchstart", function () { timer = setTimeout(function () { window.location.href = "/admin.html"; }, 800); }, { passive: true });
+      el.addEventListener("touchend", function () { clearTimeout(timer); });
+      el.addEventListener("touchcancel", function () { clearTimeout(timer); });
+    });
+  })();
+
+})();
+</script>
+</body>
+</html>

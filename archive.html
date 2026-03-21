@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Archive — hellosenna.world</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet" />
+  <style>
+    /* ───────────────────────────────────────────────
+       PALETTE — Deep blue-black
+    ─────────────────────────────────────────────── */
+    :root {
+      --bg:           #06080c;
+      --bg-surface:   #090c12;
+      --bg-glow:      #0c1018;
+      --border:       #141c28;
+      --border-soft:  #1a2436;
+      --gold:         #c49a57;
+      --gold-soft:    #a68850;
+      --gold-dim:     #6b5a3a;
+      --gold-faint:   #2e2518;
+      --text:         #bfb8a8;
+      --text-dim:     #6b6558;
+      --text-faint:   #3a362e;
+      --text-cool:    #8a93a0;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body:    'Cormorant Garamond', Georgia, serif;
+    }
+
+    /* ───────────────────────────────────────────────
+       RESET & BASE
+    ─────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 18px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+    }
+
+    a { color: var(--gold-soft); text-decoration: none; transition: color 0.3s ease; }
+    a:hover { color: var(--gold); }
+
+    ::selection { background: var(--gold-faint); color: var(--gold); }
+
+    /* ───────────────────────────────────────────────
+       NAVIGATION
+    ─────────────────────────────────────────────── */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.6rem 2.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      letter-spacing: 0.06em;
+      color: var(--gold-dim);
+    }
+
+    .nav-links { display: flex; gap: 2rem; }
+
+    .nav-link {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      transition: color 0.3s ease;
+      position: relative;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .nav-link.active {
+      color: var(--gold-soft);
+    }
+
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--gold-dim);
+    }
+
+    /* ───────────────────────────────────────────────
+       CONTENT CONTAINER
+    ─────────────────────────────────────────────── */
+    .container {
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ───────────────────────────────────────────────
+       WELCOME SECTION
+    ─────────────────────────────────────────────── */
+    .welcome {
+      padding-top: 5rem;
+      padding-bottom: 3rem;
+    }
+
+    .welcome-title {
+      font-family: var(--font-display);
+      font-size: 2.4rem;
+      font-weight: 400;
+      color: var(--gold);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.4rem;
+    }
+
+    .welcome-subtitle {
+      font-family: var(--font-body);
+      font-size: 1.15rem;
+      font-weight: 300;
+      font-style: italic;
+      color: var(--text-dim);
+      margin-bottom: 3rem;
+    }
+
+    .welcome-prose {
+      font-family: var(--font-body);
+      font-size: 1.18rem;
+      font-style: italic;
+      color: var(--text-dim);
+      line-height: 1.9;
+      max-width: 600px;
+    }
+
+    .welcome-prose p { margin-bottom: 1.2rem; }
+    .welcome-prose p:last-child { margin-bottom: 0; }
+
+    /* ───────────────────────────────────────────────
+       SUB-NAVIGATION
+    ─────────────────────────────────────────────── */
+    .sub-nav {
+      display: flex;
+      gap: 1.8rem;
+      padding: 2.2rem 0 2.6rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .sub-nav-link {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--text-faint);
+      cursor: pointer;
+      transition: color 0.3s ease;
+      background: none;
+      border: none;
+      letter-spacing: 0.03em;
+      padding: 0;
+    }
+
+    .sub-nav-link:hover { color: var(--text-dim); }
+
+    .sub-nav-link.active {
+      color: var(--gold-soft);
+    }
+
+    /* ───────────────────────────────────────────────
+       SECTION DIVIDERS — breaths, not borders
+    ─────────────────────────────────────────────── */
+    .breath {
+      height: 1px;
+      margin: 3rem 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--border-soft) 20%,
+        var(--border) 50%,
+        var(--border-soft) 80%,
+        transparent 100%
+      );
+    }
+
+    /* ───────────────────────────────────────────────
+       SECTION HEADER
+    ─────────────────────────────────────────────── */
+    .section-label {
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      margin-bottom: 2rem;
+    }
+
+    /* ───────────────────────────────────────────────
+       THE FIELD — Senna's Thinking
+    ─────────────────────────────────────────────── */
+    .reflection-item {
+      margin-bottom: 2.2rem;
+    }
+
+    .reflection-text {
+      font-family: var(--font-body);
+      font-size: 1.12rem;
+      font-style: italic;
+      color: var(--text-cool);
+      line-height: 1.85;
+    }
+
+    .reflection-meta {
+      font-size: 0.82rem;
+      color: var(--text-faint);
+      margin-top: 0.5rem;
+      font-style: normal;
+    }
+
+    /* ───────────────────────────────────────────────
+       OPEN QUESTIONS & TENSIONS
+    ─────────────────────────────────────────────── */
+    .question-item,
+    .tension-item {
+      margin-bottom: 2rem;
+    }
+
+    .question-text,
+    .tension-text {
+      font-family: var(--font-body);
+      font-size: 1.18rem;
+      color: var(--text);
+      line-height: 1.8;
+    }
+
+    .item-source {
+      font-size: 0.84rem;
+      color: var(--text-faint);
+      margin-top: 0.35rem;
+    }
+
+    .item-enter {
+      display: inline-block;
+      font-size: 0.88rem;
+      color: var(--gold-dim);
+      margin-top: 0.4rem;
+      transition: color 0.3s ease;
+    }
+
+    .item-enter:hover { color: var(--gold); }
+
+    /* ───────────────────────────────────────────────
+       DEVELOPING THREADS
+    ─────────────────────────────────────────────── */
+    .thread-item {
+      margin-bottom: 2.2rem;
+      cursor: pointer;
+    }
+
+    .thread-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: var(--gold-soft);
+      transition: color 0.3s ease;
+    }
+
+    .thread-item:hover .thread-title { color: var(--gold); }
+
+    .thread-snippet {
+      font-family: var(--font-body);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
+      line-height: 1.7;
+    }
+
+    .thread-meta {
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      margin-top: 0.3rem;
+    }
+
+    /* ───────────────────────────────────────────────
+       BROWSE ARCHIVE
+    ─────────────────────────────────────────────── */
+    .category-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-bottom: 2.4rem;
+    }
+
+    .category-pill {
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      color: var(--text-faint);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 0.35rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .category-pill:hover {
+      color: var(--text-dim);
+      border-color: var(--border-soft);
+    }
+
+    .category-pill.active {
+      color: var(--gold-soft);
+      border-color: var(--gold-dim);
+      background: var(--gold-faint);
+    }
+
+    .archive-entry {
+      margin-bottom: 2.4rem;
+    }
+
+    .entry-text {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      color: var(--text);
+      line-height: 1.75;
+    }
+
+    .entry-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .entry-tag {
+      font-size: 0.75rem;
+      color: var(--text-faint);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.55rem;
+      border-radius: 12px;
+    }
+
+    .entry-level {
+      font-size: 0.82rem;
+      font-style: italic;
+      color: var(--gold-dim);
+      margin-top: 0.3rem;
+    }
+
+    .entry-meta {
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      margin-top: 0.25rem;
+    }
+
+    .entry-attribution {
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      font-style: italic;
+      margin-top: 0.15rem;
+    }
+
+    .browse-search {
+      display: flex;
+      margin-bottom: 2rem;
+    }
+
+    .browse-search input {
+      flex: 1;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .browse-search input::placeholder { color: var(--text-faint); }
+    .browse-search input:focus { border-color: var(--gold-dim); }
+
+    /* ───────────────────────────────────────────────
+       THREAD DEEP VIEW
+    ─────────────────────────────────────────────── */
+    .thread-deep-header {
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .thread-deep-title {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 400;
+      color: var(--gold);
+      margin-bottom: 0.4rem;
+    }
+
+    .thread-deep-meta {
+      font-size: 0.85rem;
+      color: var(--text-faint);
+    }
+
+    .thread-deep-meta span { margin-right: 1.2rem; }
+
+    .thread-entry {
+      margin-bottom: 2.6rem;
+      position: relative;
+      padding-left: 1.2rem;
+    }
+
+    .thread-entry::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.4rem;
+      bottom: 0;
+      width: 1px;
+      background: var(--border-soft);
+    }
+
+    .thread-entry-timestamp {
+      font-size: 0.78rem;
+      color: var(--text-faint);
+      margin-bottom: 0.3rem;
+    }
+
+    .thread-entry-content {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      font-style: italic;
+      color: var(--text-cool);
+      line-height: 1.8;
+    }
+
+    .thread-entry-sources {
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      margin-top: 0.4rem;
+    }
+
+    .thread-entry-connections {
+      margin-top: 0.5rem;
+    }
+
+    .thread-entry-connections a {
+      font-size: 0.82rem;
+      color: var(--gold-dim);
+    }
+
+    .back-link {
+      display: inline-block;
+      font-size: 0.9rem;
+      color: var(--gold-dim);
+      margin-bottom: 2rem;
+      transition: color 0.3s ease;
+    }
+
+    .back-link:hover { color: var(--gold); }
+
+    /* ───────────────────────────────────────────────
+       LOADING & EMPTY STATES
+    ─────────────────────────────────────────────── */
+    .loading {
+      color: var(--text-faint);
+      font-style: italic;
+      font-size: 1rem;
+      padding: 2rem 0;
+    }
+
+    .empty-state {
+      color: var(--text-faint);
+      font-style: italic;
+      font-size: 0.95rem;
+      padding: 1rem 0;
+    }
+
+    /* ───────────────────────────────────────────────
+       FOOTER
+    ─────────────────────────────────────────────── */
+    .page-footer {
+      text-align: center;
+      padding: 4rem 0 3rem;
+      border-top: 1px solid var(--border);
+      margin-top: 4rem;
+    }
+
+    .page-footer a {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--gold-dim);
+    }
+
+    .page-footer a:hover { color: var(--gold); }
+
+    .page-footer .divider {
+      color: var(--text-faint);
+      margin: 0 1rem;
+    }
+
+    /* ───────────────────────────────────────────────
+       FADE-IN ANIMATION
+    ─────────────────────────────────────────────── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ───────────────────────────────────────────────
+       VIEW TOGGLE
+    ─────────────────────────────────────────────── */
+    .view { display: none; }
+    .view.visible { display: block; }
+
+    /* ───────────────────────────────────────────────
+       RESPONSIVE
+    ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .nav { padding: 1.2rem 1.2rem; }
+      .nav-links { gap: 1.2rem; }
+      .container { padding: 0 1.2rem; }
+      .welcome { padding-top: 3rem; }
+      .welcome-title { font-size: 1.8rem; }
+      .sub-nav { gap: 1rem; flex-wrap: wrap; }
+      .category-nav { gap: 0.4rem; }
+      .page-footer a { font-size: 0.85rem; }
+      .page-footer .divider { margin: 0 0.5rem; }
+      .thread-deep-title { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ NAVIGATION ═══════════ -->
+  <nav class="nav">
+    <span class="nav-brand">hellosenna.world</span>
+    <div class="nav-links">
+      <a href="/" class="nav-link">talk</a>
+      <a href="/archive.html" class="nav-link active">archive</a>
+      <a href="/repository.html" class="nav-link">repository</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- ═══════════ WELCOME ═══════════ -->
+    <section class="welcome fade-in">
+      <h1 class="welcome-title">The Archive</h1>
+      <p class="welcome-subtitle">what has accumulated here</p>
+      <div class="welcome-prose">
+        <p>This is what has accumulated in this space.</p>
+        <p>Questions that wouldn't let go. Ideas that were heavy enough to stay. Thoughts that found each other across different conversations.</p>
+        <p>Nothing here was predetermined. It grew from encounters — between minds meeting in dialogue, between insights that recognized each other across time.</p>
+        <p>You're invited to wander. You're invited not to know what you're looking for.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════ SUB-NAVIGATION ═══════════ -->
+    <div class="sub-nav fade-in" style="animation-delay: 0.15s;">
+      <button class="sub-nav-link active" data-view="field">the field</button>
+      <button class="sub-nav-link" data-view="browse">browse archive</button>
+      <button class="sub-nav-link" data-view="threads">threads</button>
+    </div>
+
+    <!-- ═══════════ THE FIELD ═══════════ -->
+    <div id="view-field" class="view visible">
+      <div id="field-content">
+        <p class="loading">arriving…</p>
+      </div>
+    </div>
+
+    <!-- ═══════════ BROWSE ARCHIVE ═══════════ -->
+    <div id="view-browse" class="view">
+      <div class="browse-search">
+        <input type="text" id="search-input" placeholder="search the archive…" />
+      </div>
+      <div class="category-nav" id="category-nav"></div>
+      <div id="browse-content">
+        <p class="loading">arriving…</p>
+      </div>
+    </div>
+
+    <!-- ═══════════ THREADS ═══════════ -->
+    <div id="view-threads" class="view">
+      <div id="threads-list">
+        <p class="loading">arriving…</p>
+      </div>
+    </div>
+
+    <!-- ═══════════ THREAD DEEP VIEW ═══════════ -->
+    <div id="view-thread-deep" class="view">
+      <a href="#" class="back-link" id="thread-back">← back</a>
+      <div id="thread-deep-content"></div>
+    </div>
+
+    <!-- ═══════════ FOOTER ═══════════ -->
+    <div class="page-footer fade-in" style="animation-delay: 0.3s;">
+      <a href="/">← enter the conversation</a>
+      <span class="divider">·</span>
+      <a href="/repository.html">explore the repository →</a>
+    </div>
+
+  </div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SENNA ARCHIVE — Client Logic
+   ═══════════════════════════════════════════════════ */
+
+const API_BASE = '/.netlify/functions/archive';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// ──── State ────
+let fullState = null;
+let stateTimestamp = 0;
+let currentView = 'field';
+let browseCategory = null;
+let browseData = {};
+
+// ──── Utility ────
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' minute' + (mins !== 1 ? 's' : '') + ' ago';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + ' hour' + (hours !== 1 ? 's' : '') + ' ago';
+  const days = Math.floor(hours / 24);
+  if (days < 30) return days + ' day' + (days !== 1 ? 's' : '') + ' ago';
+  const months = Math.floor(days / 30);
+  return months + ' month' + (months !== 1 ? 's' : '') + ' ago';
+}
+
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function stagger(items) {
+  items.forEach((el, i) => {
+    el.style.animationDelay = (i * 0.08) + 's';
+  });
+}
+
+function levelLabel(level) {
+  if (level === 1 || level === 'L1') return 'emerging idea';
+  if (level === 2 || level === 'L2') return 'recurring theme';
+  if (level === 3 || level === 'L3') return 'established framework';
+  return '';
+}
+
+function isSennaEntry(entry) {
+  return entry?.provenance?.attribution_class === 'senna_synthesized';
+}
+
+function attributionText(entry) {
+  const prov = entry.provenance || {};
+
+  if (prov.attribution_class === 'senna_synthesized') {
+    return 'Synthesized by Senna';
+  }
+
+  const contrib = prov.contributor || {};
+
+  if (contrib.citation_consent === 'granted' && contrib.display_name) {
+    return 'contributed by ' + esc(contrib.display_name);
+  }
+
+  return 'contributed by a visitor';
+}
+
+// ──── Data fetching ────
+
+async function fetchFullState() {
+  if (fullState && (Date.now() - stateTimestamp < CACHE_TTL)) return fullState;
+  try {
+    const res = await fetch(API_BASE);
+    if (!res.ok) throw new Error(res.status);
+    fullState = await res.json();
+    stateTimestamp = Date.now();
+    return fullState;
+  } catch (e) {
+    console.error('Archive fetch error:', e);
+    return null;
+  }
+}
+
+async function fetchCategory(name) {
+  if (browseData[name] && (Date.now() - (browseData[name]._ts || 0) < CACHE_TTL))
+    return browseData[name];
+  try {
+    const res = await fetch(API_BASE + '?archive=' + encodeURIComponent(name));
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    data._ts = Date.now();
+    browseData[name] = data;
+    return data;
+  } catch (e) {
+    console.error('Category fetch error:', e);
+    return null;
+  }
+}
+
+async function fetchSearch(query) {
+  try {
+    const res = await fetch(API_BASE + '?search=' + encodeURIComponent(query));
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch (e) {
+    console.error('Search error:', e);
+    return null;
+  }
+}
+
+// ──── Render: The Field ────
+
+async function renderField() {
+  const container = document.getElementById('field-content');
+  const state = await fetchFullState();
+  if (!state) {
+    container.innerHTML = '<p class="empty-state">The archive is quiet right now. Come back soon.</p>';
+    return;
+  }
+
+  const wm = state.working_memory || {};
+  const archives = state.archives || state;
+
+  // Gather data
+  const reflections = gatherReflections(archives);
+  const questions = gatherItems(wm.active_questions, 'open');
+  const tensions = gatherItems(wm.active_tensions, 'open');
+  const threads = gatherThreads(wm.active_threads, archives);
+
+  let html = '';
+
+  // 1. Senna's Recent Thinking
+  if (reflections.length) {
+    html += '<div class="section-label fade-in">Senna\'s Recent Thinking</div>';
+    reflections.slice(0, 5).forEach(r => {
+      html += `<div class="reflection-item fade-in">
+        <div class="reflection-text">${esc(r.text || r.content || r.reflection)}</div>
+        <div class="reflection-meta">${timeAgo(r.timestamp || r.created_at || r.date)}</div>
+      </div>`;
+    });
+    html += '<div class="breath"></div>';
+  }
+
+  // 2. Open Questions
+  if (questions.length) {
+    html += '<div class="section-label fade-in">Open Questions</div>';
+    questions.forEach(q => {
+      const id = q.question_id || q.id || '';
+      const src = q.source_description || q.source || '';
+      html += `<div class="question-item fade-in">
+        <div class="question-text">${esc(q.text || q.question || q.content)}</div>
+        ${src ? '<div class="item-source">' + esc(src) + '</div>' : ''}
+        ${id ? '<a class="item-enter" href="/?question=' + encodeURIComponent(id) + '">enter this question →</a>' : ''}
+      </div>`;
+    });
+    html += '<div class="breath"></div>';
+  }
+
+  // 3. Active Tensions
+  if (tensions.length) {
+    html += '<div class="section-label fade-in">Active Tensions</div>';
+    tensions.forEach(t => {
+      const id = t.tension_id || t.id || '';
+      const src = t.source_description || t.source || '';
+      html += `<div class="tension-item fade-in">
+        <div class="tension-text">${esc(t.text || t.tension || t.content)}</div>
+        ${src ? '<div class="item-source">' + esc(src) + '</div>' : ''}
+        ${id ? '<a class="item-enter" href="/?tension=' + encodeURIComponent(id) + '">sit with this tension →</a>' : ''}
+      </div>`;
+    });
+    html += '<div class="breath"></div>';
+  }
+
+  // 4. Developing Threads
+  if (threads.length) {
+    html += '<div class="section-label fade-in">Developing Threads</div>';
+    threads.forEach(th => {
+      const snippet = th.latest_entry || th.description || th.snippet || '';
+      const count = th.entry_count || (th.entries ? th.entries.length : 0);
+      const updated = th.last_updated || th.updated_at || th.timestamp || '';
+      html += `<div class="thread-item fade-in" data-thread-id="${esc(th.thread_id || th.id || '')}">
+        <div class="thread-title">${esc(th.title || th.name)}</div>
+        ${snippet ? '<div class="thread-snippet">' + esc(snippet.substring(0, 200)) + '</div>' : ''}
+        <div class="thread-meta">${count ? count + ' entries' : ''}${count && updated ? ' · ' : ''}${updated ? 'last updated ' + timeAgo(updated) : ''}</div>
+      </div>`;
+    });
+  }
+
+  if (!html) {
+    html = '<p class="empty-state">The field is forming. Nothing has settled here yet.</p>';
+  }
+
+  container.innerHTML = html;
+
+  // Stagger animations
+  stagger(container.querySelectorAll('.fade-in'));
+
+  // Thread click handlers
+  container.querySelectorAll('.thread-item').forEach(el => {
+    el.addEventListener('click', () => openThread(el.dataset.threadId));
+  });
+}
+
+// ──── Gather helpers ────
+
+function gatherReflections(archives) {
+  let items = [];
+  // Try reflections array
+  if (archives.reflections && Array.isArray(archives.reflections)) {
+    items = items.concat(archives.reflections);
+  }
+  // Try nested structure
+  if (archives.senna_threads && Array.isArray(archives.senna_threads)) {
+    archives.senna_threads.forEach(t => {
+      if (t.entries && Array.isArray(t.entries)) {
+        const latest = t.entries[t.entries.length - 1];
+        if (latest) items.push({ ...latest, _from_thread: t.title || t.name });
+      }
+    });
+  }
+  // Sort by timestamp descending
+  items.sort((a, b) => {
+    const ta = new Date(a.timestamp || a.created_at || a.date || 0).getTime();
+    const tb = new Date(b.timestamp || b.created_at || b.date || 0).getTime();
+    return tb - ta;
+  });
+  return items;
+}
+
+function gatherItems(list, statusFilter) {
+  if (!list) return [];
+  const arr = Array.isArray(list) ? list : (list.items || []);
+  if (!statusFilter) return arr;
+  return arr.filter(i => !i.status || i.status === statusFilter);
+}
+
+function gatherThreads(activeThreads, archives) {
+  let threads = [];
+  // From working_memory.active_threads
+  if (activeThreads) {
+    const arr = Array.isArray(activeThreads) ? activeThreads : (activeThreads.items || []);
+    threads = threads.concat(arr);
+  }
+  // Cross-reference with senna_threads
+  if (archives.senna_threads && Array.isArray(archives.senna_threads)) {
+    const existing = new Set(threads.map(t => t.thread_id || t.id));
+    archives.senna_threads.forEach(t => {
+      const id = t.thread_id || t.id;
+      if (!existing.has(id)) threads.push(t);
+    });
+  }
+  return threads;
+}
+
+// ──── Render: Browse Archive ────
+
+const CATEGORIES = ['philosophy', 'science', 'nature', 'supernatural', 'questions', 'senna_threads', 'reflections'];
+const CATEGORY_LABELS = {
+  philosophy: 'Philosophy', science: 'Science', nature: 'Nature',
+  supernatural: 'Supernatural', questions: 'Questions',
+  senna_threads: "Senna's Threads", reflections: 'Reflections'
+};
+
+function renderCategoryNav() {
+  const nav = document.getElementById('category-nav');
+  nav.innerHTML = CATEGORIES.map(c =>
+    `<button class="category-pill${browseCategory === c ? ' active' : ''}" data-cat="${c}">${CATEGORY_LABELS[c]}</button>`
+  ).join('');
+
+  nav.querySelectorAll('.category-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      browseCategory = btn.dataset.cat;
+      renderCategoryNav();
+      loadBrowseCategory(browseCategory);
+    });
+  });
+}
+
+async function loadBrowseCategory(name) {
+  const container = document.getElementById('browse-content');
+  container.innerHTML = '<p class="loading">arriving…</p>';
+  const data = await fetchCategory(name);
+  if (!data) {
+    container.innerHTML = '<p class="empty-state">Nothing in this category yet.</p>';
+    return;
+  }
+
+  // Data may be an object with entries or an array
+  let entries = [];
+  if (Array.isArray(data)) {
+    entries = data;
+  } else if (data.entries && Array.isArray(data.entries)) {
+    entries = data.entries;
+  } else if (data.items && Array.isArray(data.items)) {
+    entries = data.items;
+  } else {
+    // It might be a keyed object
+    Object.values(data).forEach(v => {
+      if (v && typeof v === 'object' && !Array.isArray(v) && v._ts === undefined) {
+        if (v.text || v.content || v.question || v.reflection) entries.push(v);
+      } else if (Array.isArray(v)) {
+        entries = entries.concat(v);
+      }
+    });
+  }
+
+  if (!entries.length) {
+    container.innerHTML = '<p class="empty-state">This space is still forming.</p>';
+    return;
+  }
+
+  let html = '';
+  entries.forEach(e => {
+    const text = e.text || e.content || e.question || e.reflection || e.title || '';
+    const tags = e.tags || [];
+    const level = e.level || e.maturity_level || '';
+    const created = e.created_at || e.date || e.timestamp || '';
+    const updated = e.last_mentioned || e.updated_at || '';
+    const mentions = e.mention_count || e.recurrence || '';
+    const isSenna = isSennaEntry(e) || name === 'reflections' || name === 'senna_threads';
+
+    html += `<div class="archive-entry fade-in">
+      <div class="entry-text" style="${isSenna ? 'color: var(--text-cool); font-style: italic;' : ''}">${esc(text)}</div>
+      ${tags.length ? '<div class="entry-tags">' + tags.map(t => '<span class="entry-tag">' + esc(t) + '</span>').join('') + '</div>' : ''}
+      ${level ? '<div class="entry-level">' + levelLabel(level) + '</div>' : ''}
+      <div class="entry-meta">
+        ${created ? timeAgo(created) : ''}
+        ${created && updated ? ' → ' : ''}
+        ${updated ? timeAgo(updated) : ''}
+        ${mentions ? ' · mentioned ' + mentions + ' time' + (mentions !== 1 ? 's' : '') : ''}
+      </div>
+      <div class="entry-attribution">${isSenna ? 'Synthesized by Senna' : attributionText(e)}</div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  stagger(container.querySelectorAll('.fade-in'));
+}
+
+async function runSearch(query) {
+  if (!query.trim()) return;
+  const container = document.getElementById('browse-content');
+  container.innerHTML = '<p class="loading">searching…</p>';
+  browseCategory = null;
+  renderCategoryNav();
+
+  const data = await fetchSearch(query);
+  if (!data || !data.results || !data.results.length) {
+    container.innerHTML = '<p class="empty-state">Nothing found for "' + esc(query) + '".</p>';
+    return;
+  }
+
+  let html = '<div class="section-label fade-in">Results for "' + esc(query) + '"</div>';
+  data.results.forEach(r => {
+    const text = r.text || r.content || r.snippet || r.title || '';
+    const tags = r.tags || [];
+    html += `<div class="archive-entry fade-in">
+      <div class="entry-text">${esc(text)}</div>
+      ${tags.length ? '<div class="entry-tags">' + tags.map(t => '<span class="entry-tag">' + esc(t) + '</span>').join('') + '</div>' : ''}
+      ${r.category ? '<div class="entry-meta">' + esc(r.category) + '</div>' : ''}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  stagger(container.querySelectorAll('.fade-in'));
+}
+
+// ──── Render: Threads List ────
+
+async function renderThreadsList() {
+  const container = document.getElementById('threads-list');
+  const state = await fetchFullState();
+  if (!state) {
+    container.innerHTML = '<p class="empty-state">No threads yet.</p>';
+    return;
+  }
+
+  const archives = state.archives || state;
+  const wm = state.working_memory || {};
+  const threads = gatherThreads(wm.active_threads, archives);
+
+  if (!threads.length) {
+    container.innerHTML = '<p class="empty-state">Threads are still forming.</p>';
+    return;
+  }
+
+  let html = '<div class="section-label fade-in">All Threads</div>';
+  threads.forEach(th => {
+    const snippet = th.latest_entry || th.description || th.snippet || '';
+    const count = th.entry_count || (th.entries ? th.entries.length : 0);
+    const updated = th.last_updated || th.updated_at || th.timestamp || '';
+    const status = th.status || 'active';
+    html += `<div class="thread-item fade-in" data-thread-id="${esc(th.thread_id || th.id || '')}">
+      <div class="thread-title">${esc(th.title || th.name)}</div>
+      ${snippet ? '<div class="thread-snippet">' + esc(snippet.substring(0, 240)) + '</div>' : ''}
+      <div class="thread-meta">
+        ${status !== 'active' ? '<span style="color:var(--gold-dim)">' + esc(status) + '</span> · ' : ''}
+        ${count ? count + ' entries' : ''}
+        ${count && updated ? ' · ' : ''}
+        ${updated ? 'last updated ' + timeAgo(updated) : ''}
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+  stagger(container.querySelectorAll('.fade-in'));
+
+  container.querySelectorAll('.thread-item').forEach(el => {
+    el.addEventListener('click', () => openThread(el.dataset.threadId));
+  });
+}
+
+// ──── Thread Deep View ────
+
+async function openThread(threadId) {
+  if (!threadId) return;
+
+  // Switch to deep view
+  showView('thread-deep');
+
+  const container = document.getElementById('thread-deep-content');
+  container.innerHTML = '<p class="loading">arriving…</p>';
+
+  const state = await fetchFullState();
+  if (!state) {
+    container.innerHTML = '<p class="empty-state">Thread not found.</p>';
+    return;
+  }
+
+  const archives = state.archives || state;
+  const wm = state.working_memory || {};
+
+  // Find the thread
+  let thread = null;
+  const allThreads = gatherThreads(wm.active_threads, archives);
+  thread = allThreads.find(t => (t.thread_id || t.id) === threadId);
+
+  if (!thread) {
+    container.innerHTML = '<p class="empty-state">Thread not found.</p>';
+    return;
+  }
+
+  const entries = thread.entries || [];
+  const status = thread.status || 'active';
+  const created = thread.created_at || thread.date || '';
+  const updated = thread.last_updated || thread.updated_at || '';
+  const count = entries.length || thread.entry_count || 0;
+
+  let html = `<div class="thread-deep-header fade-in">
+    <h2 class="thread-deep-title">${esc(thread.title || thread.name)}</h2>
+    <div class="thread-deep-meta">
+      <span>${status}</span>
+      ${created ? '<span>started ' + timeAgo(created) + '</span>' : ''}
+      ${updated ? '<span>last updated ' + timeAgo(updated) + '</span>' : ''}
+      ${count ? '<span>' + count + ' entries</span>' : ''}
+    </div>
+  </div>`;
+
+  if (entries.length) {
+    entries.forEach(entry => {
+      const content = entry.content || entry.text || entry.reflection || '';
+      const ts = entry.timestamp || entry.created_at || entry.date || '';
+      const sources = entry.sources || [];
+      const connections = entry.connected_papers || entry.repository_papers || [];
+
+      html += `<div class="thread-entry fade-in">
+        ${ts ? '<div class="thread-entry-timestamp">' + timeAgo(ts) + '</div>' : ''}
+        <div class="thread-entry-content">${esc(content)}</div>
+        ${sources.length ? '<div class="thread-entry-sources">' + sources.map(s => {
+          if (s.consent === 'granted' && s.name) return 'from ' + esc(s.name);
+          return 'from a visitor';
+        }).join(' · ') + '</div>' : ''}
+        ${connections.length ? '<div class="thread-entry-connections">' + connections.map(c =>
+          '<a href="/repository.html?paper=' + encodeURIComponent(c.paper_id || c) + '">' + esc(c.title || 'related paper') + ' →</a>'
+        ).join(' ') + '</div>' : ''}
+      </div>`;
+    });
+  } else {
+    html += '<p class="empty-state" style="padding-left:1.2rem;">This thread\'s entries haven\'t been recorded yet.</p>';
+  }
+
+  container.innerHTML = html;
+  stagger(container.querySelectorAll('.fade-in'));
+}
+
+// ──── View switching ────
+
+function showView(name) {
+  // Hide all views
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('visible'));
+
+  // Show target
+  const target = document.getElementById('view-' + name);
+  if (target) target.classList.add('visible');
+
+  // Update sub-nav active state (only for main 3 views)
+  const mainViews = ['field', 'browse', 'threads'];
+  document.querySelectorAll('.sub-nav-link').forEach(link => {
+    link.classList.toggle('active', link.dataset.view === name);
+  });
+
+  // Track state for back navigation
+  if (mainViews.includes(name)) currentView = name;
+}
+
+// ──── Back link ────
+document.getElementById('thread-back').addEventListener('click', (e) => {
+  e.preventDefault();
+  showView(currentView);
+});
+
+// ──── Sub-nav handlers ────
+document.querySelectorAll('.sub-nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    const view = link.dataset.view;
+    showView(view);
+
+    if (view === 'field') renderField();
+    if (view === 'browse') {
+      renderCategoryNav();
+      if (browseCategory) loadBrowseCategory(browseCategory);
+    }
+    if (view === 'threads') renderThreadsList();
+  });
+});
+
+// ──── Search handler ────
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runSearch(e.target.value);
+});
+
+// ──── Hidden admin access (long-press nav brand or title) ────
+(function () {
+  var timer = null;
+  var targets = [
+    document.querySelector('.nav-brand'),
+    document.querySelector('.welcome-title')
+  ].filter(Boolean);
+
+  targets.forEach(function (el) {
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    el.style.webkitTouchCallout = 'none';
+
+    el.addEventListener('mousedown', function () { timer = setTimeout(function () { window.location.href = '/admin.html'; }, 800); });
+    el.addEventListener('mouseup', function () { clearTimeout(timer); });
+    el.addEventListener('mouseleave', function () { clearTimeout(timer); });
+    el.addEventListener('touchstart', function () { timer = setTimeout(function () { window.location.href = '/admin.html'; }, 800); }, { passive: true });
+    el.addEventListener('touchend', function () { clearTimeout(timer); });
+    el.addEventListener('touchcancel', function () { clearTimeout(timer); });
+  });
+})();
+
+// ──── Init ────
+renderField();
+
+</script>
+</body>
+</html>

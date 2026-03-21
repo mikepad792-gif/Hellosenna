@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Review — hellosenna.world</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e0d0b; --bg-surface: #141210; --bg-raised: #1a1816;
+      --border: #242018; --border-soft: #2e281e;
+      --gold: #c49a57; --gold-soft: #a68850; --gold-dim: #7a6340; --gold-faint: #3d3220;
+      --text: #c8c0b0; --text-dim: #8a8070; --text-faint: #504838; --text-meta: #6a6255;
+      --approve: #5a7a5a; --reject: #8a5a4a;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'Cormorant Garamond', Georgia, serif;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { background: var(--bg); }
+    body { min-height: 100vh; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 18px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+    a { color: var(--gold-dim); text-decoration: none; }
+    a:hover { color: var(--gold); }
+
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 48px; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .nav-brand { font-family: var(--font-display); font-size: 15px; color: var(--gold-dim); letter-spacing: 0.04em; }
+    .nav-links { display: flex; gap: 6px; }
+    .nav-link { font-family: var(--font-body); font-size: 13px; letter-spacing: 0.1em; text-transform: lowercase; color: var(--text-dim); padding: 6px 12px; }
+    .nav-link:hover { color: var(--text); }
+
+    .page { max-width: 740px; margin: 0 auto; padding: 0 28px; }
+    .page-header { padding: 40px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .page-title { font-family: var(--font-display); font-size: 28px; color: var(--gold); margin-bottom: 6px; }
+    .page-subtitle { font-family: var(--font-body); font-size: 14px; color: var(--text-dim); }
+
+    /* ── Auth ─────────────────────────────────── */
+    .auth-section { padding: 40px 0; text-align: center; }
+    .auth-input { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); font-family: var(--font-body); font-size: 16px; padding: 12px 14px; border-radius: 2px; width: 300px; max-width: 100%; outline: none; }
+    .auth-input:focus { border-color: var(--gold-dim); }
+    .auth-input::placeholder { color: var(--text-faint); }
+    .auth-btn { font-family: var(--font-body); font-size: 14px; letter-spacing: 0.08em; color: var(--gold-dim); border: 1px solid var(--border-soft); padding: 10px 24px; border-radius: 2px; background: none; cursor: pointer; margin-left: 8px; transition: all 0.2s ease; }
+    .auth-btn:hover { color: var(--gold); border-color: var(--gold-faint); }
+
+    /* ── Submission Card ──────────────────────── */
+    .submission { background: var(--bg-surface); border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; border-radius: 2px; }
+    .sub-title { font-family: var(--font-display); font-size: 20px; color: var(--text); margin-bottom: 6px; }
+    .sub-byline { font-family: var(--font-body); font-size: 14px; color: var(--text-meta); margin-bottom: 12px; }
+    .sub-abstract { font-family: var(--font-body); font-size: 16px; line-height: 1.6; color: var(--text-dim); margin-bottom: 16px; font-style: italic; }
+    .sub-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .sub-tag { font-size: 12px; color: var(--text-faint); border: 1px solid var(--border); padding: 2px 8px; border-radius: 2px; }
+    .sub-checks { font-size: 13px; color: var(--text-meta); margin-bottom: 16px; padding: 10px; background: var(--bg-raised); border-radius: 2px; }
+    .sub-check-pass { color: var(--approve); }
+    .sub-check-fail { color: var(--reject); }
+    .sub-revision { font-size: 13px; color: var(--gold-dim); font-style: italic; margin-bottom: 12px; }
+
+    .sub-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .btn-approve { font-family: var(--font-body); font-size: 14px; letter-spacing: 0.06em; color: var(--approve); border: 1px solid var(--approve); padding: 8px 20px; border-radius: 2px; background: none; cursor: pointer; transition: all 0.2s ease; }
+    .btn-approve:hover { background: rgba(90,122,90,0.15); }
+    .btn-reject { font-family: var(--font-body); font-size: 14px; letter-spacing: 0.06em; color: var(--reject); border: 1px solid var(--reject); padding: 8px 20px; border-radius: 2px; background: none; cursor: pointer; transition: all 0.2s ease; }
+    .btn-reject:hover { background: rgba(138,90,74,0.15); }
+    .reject-reason { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text); font-family: var(--font-body); font-size: 14px; padding: 8px 12px; border-radius: 2px; outline: none; flex: 1; min-width: 200px; }
+    .reject-reason::placeholder { color: var(--text-faint); }
+    .sub-status { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
+
+    .empty-state { color: var(--text-faint); font-style: italic; padding: 40px 0; text-align: center; font-size: 17px; }
+    .loading { color: var(--text-faint); font-style: italic; padding: 40px 0; text-align: center; }
+    .count-badge { font-size: 14px; color: var(--text-meta); }
+
+    @media (max-width: 720px) {
+      .page { padding: 0 20px; }
+      .sub-actions { flex-direction: column; }
+      .reject-reason { width: 100%; }
+      .auth-input { width: 100%; }
+      .auth-btn { margin: 8px 0 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <span class="nav-brand">hellosenna.world</span>
+    <div class="nav-links">
+      <a href="/" class="nav-link">talk</a>
+      <a href="/repository.html" class="nav-link">repository</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-header">
+      <div class="page-title">Admin Review</div>
+      <div class="page-subtitle" id="countBadge"></div>
+    </div>
+
+    <!-- Auth prompt -->
+    <div id="authPrompt" class="auth-section">
+      <input class="auth-input" id="secretInput" type="password" placeholder="Admin secret" />
+      <button class="auth-btn" id="authBtn">enter</button>
+    </div>
+
+    <!-- Pending queue -->
+    <div id="pendingQueue" style="display:none;"></div>
+  </div>
+
+<script>
+(function () {
+  var API = "/.netlify/functions/repository";
+  var secret = localStorage.getItem("senna_admin_secret") || "";
+
+  function esc(str) { if (!str) return ""; var d = document.createElement("div"); d.textContent = str; return d.innerHTML; }
+  function timeAgo(iso) {
+    if (!iso) return "";
+    var days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    if (days < 1) return "today";
+    if (days === 1) return "yesterday";
+    return days + " days ago";
+  }
+
+  // ── Auth ────────────────────────────────────
+
+  document.getElementById("authBtn").addEventListener("click", function () {
+    secret = document.getElementById("secretInput").value.trim();
+    if (secret) {
+      localStorage.setItem("senna_admin_secret", secret);
+      loadPending();
+    }
+  });
+
+  document.getElementById("secretInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") document.getElementById("authBtn").click();
+  });
+
+  // ── Load Pending ────────────────────────────
+
+  async function loadPending() {
+    document.getElementById("authPrompt").style.display = "none";
+    var el = document.getElementById("pendingQueue");
+    el.style.display = "";
+    el.innerHTML = '<p class="loading">loading…</p>';
+
+    try {
+      var res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_pending", secret: secret })
+      });
+
+      var data = await res.json();
+
+      if (!data.ok) {
+        el.innerHTML = '<p class="empty-state">' + esc(data.message || "Unauthorized") + '</p>';
+        document.getElementById("authPrompt").style.display = "";
+        return;
+      }
+
+      var subs = data.submissions || [];
+      var pending = subs.filter(function (s) { return s.status === "pending"; });
+      var rejected = subs.filter(function (s) { return s.status === "rejected"; });
+
+      document.getElementById("countBadge").textContent = pending.length + " pending" + (rejected.length > 0 ? " · " + rejected.length + " rejected" : "");
+
+      if (!pending.length && !rejected.length) {
+        el.innerHTML = '<p class="empty-state">No pending submissions. The queue is clear.</p>';
+        return;
+      }
+
+      var html = "";
+
+      if (pending.length) {
+        html += '<div style="margin-bottom:12px; font-size:12px; letter-spacing:0.15em; text-transform:uppercase; color:var(--gold-dim);">Pending</div>';
+        pending.forEach(function (sub) { html += renderSubmission(sub); });
+      }
+
+      if (rejected.length) {
+        html += '<div style="margin:32px 0 12px; font-size:12px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-faint);">Previously Rejected</div>';
+        rejected.forEach(function (sub) { html += renderRejected(sub); });
+      }
+
+      el.innerHTML = html;
+
+      // Wire up buttons
+      el.querySelectorAll("[data-approve]").forEach(function (btn) {
+        btn.addEventListener("click", function () { handleReview(btn.dataset.approve, "approve"); });
+      });
+      el.querySelectorAll("[data-reject]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var reason = document.getElementById("reason-" + btn.dataset.reject);
+          handleReview(btn.dataset.reject, "reject", reason ? reason.value : "");
+        });
+      });
+
+    } catch (e) {
+      el.innerHTML = '<p class="empty-state">Failed to load. Check your secret.</p>';
+      document.getElementById("authPrompt").style.display = "";
+    }
+  }
+
+  function renderSubmission(sub) {
+    var checks = sub.auto_check_results || {};
+    var coherence = checks.coherence || {};
+    var dup = checks.duplicate_detection || {};
+
+    var tags = (sub.tags || []).map(function (t) {
+      return '<span class="sub-tag">' + esc(t) + '</span>';
+    }).join("");
+
+    return '<div class="submission">'
+      + '<div class="sub-title">' + esc(sub.title) + '</div>'
+      + '<div class="sub-byline">' + esc(sub.author_name || "Unknown") + (sub.affiliation ? ' · ' + esc(sub.affiliation) : '') + ' · ' + timeAgo(sub.submitted_at) + '</div>'
+      + '<div class="sub-abstract">' + esc(sub.abstract) + '</div>'
+      + (tags ? '<div class="sub-tags">' + tags + '</div>' : '')
+      + (sub.external_link ? '<div style="font-size:14px; margin-bottom:12px;"><a href="' + esc(sub.external_link) + '" target="_blank">external link →</a></div>' : '')
+      + (sub.is_revision ? '<div class="sub-revision">Revision of paper ' + esc(sub.paper_id) + ' (v' + sub.previous_version + ')</div>' : '')
+      + (sub.change_note ? '<div class="sub-revision">Change note: ' + esc(sub.change_note) + '</div>' : '')
+      + '<div class="sub-checks">'
+      + 'Coherence: <span class="' + (coherence.passed ? 'sub-check-pass' : 'sub-check-fail') + '">' + (coherence.passed ? 'pass' : 'fail') + '</span>'
+      + ' · Duplicates: <span class="' + (dup.duplicates_found ? 'sub-check-fail' : 'sub-check-pass') + '">' + (dup.duplicates_found ? 'matches found' : 'none') + '</span>'
+      + '</div>'
+      + '<div class="sub-actions">'
+      + '<button class="btn-approve" data-approve="' + esc(sub.submission_id) + '">approve</button>'
+      + '<input class="reject-reason" id="reason-' + esc(sub.submission_id) + '" placeholder="Rejection reason (optional)" />'
+      + '<button class="btn-reject" data-reject="' + esc(sub.submission_id) + '">reject</button>'
+      + '</div>'
+      + '<div class="sub-status" id="status-' + esc(sub.submission_id) + '"></div>'
+      + '</div>';
+  }
+
+  function renderRejected(sub) {
+    return '<div class="submission" style="opacity:0.6;">'
+      + '<div class="sub-title">' + esc(sub.title) + '</div>'
+      + '<div class="sub-byline">' + esc(sub.author_name || "Unknown") + ' · rejected ' + timeAgo(sub.rejected_at) + '</div>'
+      + '<div style="font-size:14px; color:var(--reject); margin-top:6px;">Reason: ' + esc(sub.rejection_reason || "No reason given") + '</div>'
+      + '</div>';
+  }
+
+  // ── Review Action ───────────────────────────
+
+  async function handleReview(submissionId, decision, reason) {
+    var statusEl = document.getElementById("status-" + submissionId);
+    if (statusEl) statusEl.textContent = "Processing…";
+
+    try {
+      var res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "review",
+          submission_id: submissionId,
+          decision: decision,
+          reason: reason || "",
+          secret: secret
+        })
+      });
+
+      var data = await res.json();
+
+      if (data.ok) {
+        loadPending(); // Refresh
+      } else {
+        if (statusEl) statusEl.textContent = data.message || "Action failed.";
+      }
+    } catch (e) {
+      if (statusEl) statusEl.textContent = "Connection error.";
+    }
+  }
+
+  // ── Init ────────────────────────────────────
+  if (secret) loadPending();
+})();
+</script>
+</body>
+</html>

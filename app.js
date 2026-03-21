@@ -490,28 +490,38 @@
     /* Restore admin secret */
     mikeSecret = localStorage.getItem("mike_secret") || "";
 
-    if ($title) {
-      /* Long-press to unlock admin */
-      $title.addEventListener("mousedown", function () {
+    /* Long-press to unlock admin — attach to BOTH .title and .nav-brand */
+    var adminTargets = [
+      $title,
+      document.querySelector(".nav-brand")
+    ].filter(Boolean);
+
+    adminTargets.forEach(function (el) {
+      /* Prevent text selection / callout on long-press targets */
+      el.style.userSelect = "none";
+      el.style.webkitUserSelect = "none";
+      el.style.webkitTouchCallout = "none";
+
+      el.addEventListener("mousedown", function () {
         adminPressTimer = setTimeout(handleAdminUnlock, 800);
       });
-      $title.addEventListener("mouseup", function () {
+      el.addEventListener("mouseup", function () {
         clearTimeout(adminPressTimer);
       });
-      $title.addEventListener("mouseleave", function () {
+      el.addEventListener("mouseleave", function () {
         clearTimeout(adminPressTimer);
       });
       /* Touch support */
-      $title.addEventListener("touchstart", function (e) {
+      el.addEventListener("touchstart", function (e) {
         adminPressTimer = setTimeout(handleAdminUnlock, 800);
       }, { passive: true });
-      $title.addEventListener("touchend", function () {
+      el.addEventListener("touchend", function () {
         clearTimeout(adminPressTimer);
       });
-      $title.addEventListener("touchcancel", function () {
+      el.addEventListener("touchcancel", function () {
         clearTimeout(adminPressTimer);
       });
-    }
+    });
 
     renderAdminControls();
   }
@@ -540,29 +550,22 @@
     var adminDiv = document.createElement("div");
     adminDiv.id = "adminControls";
     adminDiv.style.cssText =
-      "padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border); display: flex; gap: 8px;";
+      "padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px;";
+
+    var btnStyle =
+      'background:none; border:1px solid var(--border); '
+      + 'font-family:var(--font-body); font-size:12px; letter-spacing:0.08em; '
+      + 'padding:5px 12px; cursor:pointer; transition:color 0.16s ease;';
 
     adminDiv.innerHTML =
-      '<button id="reflectBtn" style="'
-        + 'background:none; border:1px solid var(--border); color:var(--gold-dim);'
-        + 'font-family:var(--font-body); font-size:12px; letter-spacing:0.08em;'
-        + 'padding:5px 12px; cursor:pointer; transition:color 0.16s ease;'
-      + '">reflect</button>'
-      + '<button id="resetBtn" style="'
-        + 'background:none; border:1px solid var(--border); color:var(--text-faint);'
-        + 'font-family:var(--font-body); font-size:12px; letter-spacing:0.08em;'
-        + 'padding:5px 12px; cursor:pointer; transition:color 0.16s ease;'
-      + '">reset</button>'
-      + '<button id="logoutBtn" style="'
-        + 'background:none; border:1px solid var(--border); color:var(--text-faint);'
-        + 'font-family:var(--font-body); font-size:12px; letter-spacing:0.08em;'
-        + 'padding:5px 12px; cursor:pointer; transition:color 0.16s ease;'
-      + '">lock</button>';
+      '<button id="reflectBtn" style="' + btnStyle + 'color:var(--gold-dim);">reflect</button>'
+      + '<button id="clearArchiveBtn" style="' + btnStyle + 'color:#8b3a3a;">clear archive</button>'
+      + '<button id="logoutBtn" style="' + btnStyle + 'color:var(--text-faint);">lock</button>';
 
     footer.appendChild(adminDiv);
 
     document.getElementById("reflectBtn").addEventListener("click", triggerReflection);
-    document.getElementById("resetBtn").addEventListener("click", resetSennaMemory);
+    document.getElementById("clearArchiveBtn").addEventListener("click", clearArchive);
     document.getElementById("logoutBtn").addEventListener("click", function () {
       mikeSecret = "";
       localStorage.removeItem("mike_secret");
@@ -607,49 +610,49 @@
     }
   }
 
-  async function resetSennaMemory() {
+  async function clearArchive() {
     if (!mikeSecret || sending) return;
 
-    var confirmed = confirm("Clear all Senna memory? This cannot be undone.");
+    /* Require the separate archive reset secret */
+    var archiveSecret = prompt("Enter archive reset secret:");
+    if (!archiveSecret || !archiveSecret.trim()) {
+      $statusBar.textContent = "Archive reset cancelled.";
+      return;
+    }
+
+    var confirmed = confirm(
+      "This will permanently empty all archive data.\n"
+      + "Working memory, visitor profiles, and meta will be preserved.\n\n"
+      + "Are you sure?"
+    );
     if (!confirmed) return;
 
-    var btn = document.getElementById("resetBtn");
+    var btn = document.getElementById("clearArchiveBtn");
     if (btn) btn.disabled = true;
-    $statusBar.textContent = "Resetting…";
+    $statusBar.textContent = "Clearing archive…";
 
     try {
       var res = await fetch(ARCHIVE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "reset_all",
-          secret: mikeSecret
+          action: "reset_archive",
+          secret: mikeSecret,
+          archive_reset_secret: archiveSecret.trim()
         })
       });
 
       var data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Reset failed.");
-      }
-
-      /* Clear local conversation */
-      conversationHistory = [];
-      displayName = "You";
-      localStorage.removeItem("senna_display_name");
-
-      /* Restore empty state */
-      $messages.innerHTML = "";
-      if ($emptyState) {
-        $messages.appendChild($emptyState);
-        $emptyState.style.display = "";
+        throw new Error(data.error || "Archive reset failed.");
       }
 
       await loadSidebar();
-      $statusBar.textContent = "Senna memory cleared.";
+      $statusBar.textContent = "Archive cleared.";
 
     } catch (err) {
-      $statusBar.textContent = err.message || "Reset failed.";
+      $statusBar.textContent = err.message || "Archive reset failed.";
     } finally {
       if (btn) btn.disabled = false;
     }
