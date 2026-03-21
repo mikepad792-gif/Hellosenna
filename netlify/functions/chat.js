@@ -461,7 +461,13 @@ exports.handler = async (event) => {
     const archiveArrays = loadResults.slice(4); // parallel arrays matching categoriesToLoad
 
     // ── 2a. Select relevant repo papers (tag overlap only) ──
-    const repoPapers = selectRepoPapers(repoIndex, userText);
+    // userText may be an array of content blocks when files are attached
+    const textForRepo = typeof userText === "string"
+      ? userText
+      : Array.isArray(userText)
+        ? userText.filter((b) => b.type === "text").map((b) => b.text).join(" ")
+        : "";
+    const repoPapers = selectRepoPapers(repoIndex, textForRepo);
 
     // ── 3. Extract visitor profile ──
     let visitorProfile = null;
