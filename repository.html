@@ -227,7 +227,7 @@
         </div>
         <div class="field">
           <label class="field-label">Abstract</label>
-          <textarea class="field-textarea" id="fAbstract" placeholder="Your abstract (50–3000 characters)"></textarea>
+          <textarea class="field-textarea" id="fAbstract" placeholder="A summary of the paper (50–3000 characters). The full text goes below as a PDF or link."></textarea>
           <div class="field-hint" id="abstractCount">0 / 3000</div>
         </div>
         <div class="field">
@@ -235,7 +235,12 @@
           <input class="field-input" id="fTags" placeholder="Comma-separated (e.g. structural fragility, democracy)" />
         </div>
         <div class="field">
-          <label class="field-label">External link <span class="optional">(SSRN, DOI, personal site)</span></label>
+          <label class="field-label">Full paper <span class="optional">(PDF upload — or provide a link below)</span></label>
+          <input type="file" accept=".pdf" id="fPdf" class="field-input" style="padding:10px; cursor:pointer;" />
+          <div class="field-hint" id="pdfName"></div>
+        </div>
+        <div class="field">
+          <label class="field-label">External link <span class="optional">(SSRN, DOI, personal site — alternative to PDF)</span></label>
           <input class="field-input" id="fLink" placeholder="https://..." />
         </div>
         <div class="field">
@@ -448,6 +453,32 @@
     dupEl.innerHTML = "";
     document.getElementById("submitBtn").disabled = true;
 
+    // Read PDF if attached
+    var pdfData = null;
+    var pdfInput = document.getElementById("fPdf");
+    if (pdfInput && pdfInput.files && pdfInput.files[0]) {
+      var file = pdfInput.files[0];
+      if (file.size > 4 * 1024 * 1024) {
+        status.className = "form-status error";
+        status.textContent = "PDF must be under 4MB. Consider uploading to SSRN and providing the link instead.";
+        document.getElementById("submitBtn").disabled = false;
+        return;
+      }
+      try {
+        pdfData = await new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () { resolve(reader.result.split(",")[1]); };
+          reader.onerror = function () { reject(new Error("Failed to read PDF")); };
+          reader.readAsDataURL(file);
+        });
+      } catch (e) {
+        status.className = "form-status error";
+        status.textContent = "Failed to read PDF file.";
+        document.getElementById("submitBtn").disabled = false;
+        return;
+      }
+    }
+
     var payload = {
       action: "submit",
       title: document.getElementById("fTitle").value,
@@ -455,6 +486,7 @@
       affiliation: document.getElementById("fAffiliation").value,
       abstract: document.getElementById("fAbstract").value,
       tags: document.getElementById("fTags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean),
+      pdf_data: pdfData,
       external_link: document.getElementById("fLink").value,
       contact_email: document.getElementById("fEmail").value
     };
