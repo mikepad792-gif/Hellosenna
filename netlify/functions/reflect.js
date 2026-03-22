@@ -398,6 +398,58 @@ function applyResults(result, {
     }
   }
 
+  // ── 8a. Surfaced visitor contributions ────────────────────
+  // When reflection marks a visitor contribution as worth surfacing
+  // publicly on The Field, set surfaced:true on the target entry.
+  if (Array.isArray(result.surfaced_contributions)) {
+    for (const sc of result.surfaced_contributions) {
+      if (!sc.entry_id) continue;
+      for (const cat of Object.keys(archivesByCategory)) {
+        const entry = archivesByCategory[cat].find(e => e.id === sc.entry_id);
+        if (entry) {
+          entry.surfaced = true;
+          entry.surfaced_at = now;
+          break;
+        }
+      }
+    }
+  }
+
+  // ── 8b. Contestations ─────────────────────────────────────
+  // When a visitor challenges an existing archive entry, record it.
+  if (Array.isArray(result.contestations)) {
+    for (const con of result.contestations) {
+      if (!con.target_entry_id) continue;
+      for (const cat of Object.keys(archivesByCategory)) {
+        const entry = archivesByCategory[cat].find(e => e.id === con.target_entry_id);
+        if (entry) {
+          if (!entry.contested) {
+            entry.contested = {
+              is_contested: true,
+              challenges: [],
+              last_contested: now,
+              challenge_count: 0,
+            };
+          }
+          const challengerProfile = visitors.profiles[con.challenger_user_id] || {};
+          entry.contested.challenges.push({
+            challenge_id: generateId("ch"),
+            nature: con.nature || "",
+            challenger: {
+              display_name: challengerProfile.display_name || "a visitor",
+              citation_consent: con.citation_consent || "pending",
+            },
+            surfaced_at: now,
+            source_exchange_id: con.exchange_id || null,
+          });
+          entry.contested.last_contested = now;
+          entry.contested.challenge_count = entry.contested.challenges.length;
+          break;
+        }
+      }
+    }
+  }
+
   // ── 8. Open loop resolutions ──────────────────────────────
   // NOTE: "recur" action is handled here but must also be documented
   // in the reflection prompt's output format (prompt.js) or the LLM

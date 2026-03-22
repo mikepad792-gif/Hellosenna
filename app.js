@@ -713,6 +713,15 @@
     var questionId = params.get("question");
     var tensionId  = params.get("tension");
     var contextText = params.get("context");
+    var contestationContext = params.get("contestation_context");
+
+    /* Contestation click-through — pre-loads synthesis + challenge */
+    if (contestationContext) {
+      $input.value = decodeURIComponent(contestationContext);
+      $input.dispatchEvent(new Event("input"));
+      $input.focus();
+      return;
+    }
 
     /* Direct text — no lookup needed */
     if (contextText) {
