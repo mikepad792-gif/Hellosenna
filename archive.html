@@ -260,6 +260,52 @@
     .item-enter:hover { color: var(--gold); }
 
     /* ───────────────────────────────────────────────
+       VOICES FROM THE COMMONS
+    ─────────────────────────────────────────────── */
+    .visitor-voice-item {
+      margin-bottom: 2.2rem;
+    }
+
+    .visitor-voice-text {
+      font-family: var(--font-body);
+      font-size: 1.12rem;
+      color: var(--text);
+      line-height: 1.85;
+    }
+
+    .visitor-voice-attribution {
+      font-size: 0.82rem;
+      color: var(--text-faint);
+      margin-top: 0.5rem;
+    }
+
+    /* ───────────────────────────────────────────────
+       CONTESTED MARKERS
+    ─────────────────────────────────────────────── */
+    .contested-marker {
+      font-size: 0.88rem;
+      color: #a08050;
+      margin-top: 0.6rem;
+    }
+
+    .contested-nature {
+      font-style: italic;
+      font-size: 0.92rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+
+    .contested-enter {
+      display: inline-block;
+      font-size: 0.84rem;
+      color: var(--gold-dim);
+      margin-top: 0.25rem;
+      transition: color 0.3s ease;
+    }
+
+    .contested-enter:hover { color: var(--gold); }
+
+    /* ───────────────────────────────────────────────
        DEVELOPING THREADS
     ─────────────────────────────────────────────── */
     .thread-item {
@@ -694,6 +740,46 @@ function attributionText(entry) {
   return 'contributed by a visitor';
 }
 
+function contestedHtml(entry) {
+  if (!entry || !entry.contested || !entry.contested.is_contested) return '';
+  const challenges = entry.contested.challenges || [];
+  const count = entry.contested.challenge_count || challenges.length;
+  const countLabel = count > 1 ? ` (${count})` : '';
+  let html = `<div class="contested-marker">◇ contested${countLabel}</div>`;
+  if (challenges.length) {
+    const latest = challenges[challenges.length - 1];
+    const nature = latest.nature || '';
+    const entryText = entry.text || entry.content || '';
+    const contextText = encodeURIComponent(
+      `A synthesis in the archive says: "${entryText}"\n\nA visitor contested this: "${nature}"\n\nWhat's your thinking on this tension?`
+    );
+    if (nature) {
+      html += `<div class="contested-nature">"${esc(nature)}"</div>`;
+    }
+    html += `<a class="contested-enter" href="/?contestation_context=${contextText}">enter this contestation →</a>`;
+  }
+  return html;
+}
+
+function gatherVoices(archives) {
+  const cats = ['public', 'philosophy', 'science', 'nature', 'supernatural', 'questions'];
+  let items = [];
+  for (const cat of cats) {
+    const arr = archives[cat];
+    if (Array.isArray(arr)) {
+      for (const e of arr) {
+        if (e.surfaced && !e.retired) items.push(e);
+      }
+    }
+  }
+  items.sort((a, b) => {
+    const ta = new Date(a.surfaced_at || a.created_at || 0).getTime();
+    const tb = new Date(b.surfaced_at || b.created_at || 0).getTime();
+    return tb - ta;
+  });
+  return items;
+}
+
 // ──── Data fetching ────
 
 async function fetchFullState() {
@@ -765,6 +851,28 @@ async function renderField() {
       html += `<div class="reflection-item fade-in">
         <div class="reflection-text">${esc(r.text || r.content || r.reflection)}</div>
         <div class="reflection-meta">${timeAgo(r.timestamp || r.created_at || r.date)}</div>
+        ${contestedHtml(r)}
+      </div>`;
+    });
+    html += '<div class="breath"></div>';
+  }
+
+  // 1.5. Voices from the Commons
+  const voices = gatherVoices(archives);
+  if (voices.length) {
+    html += '<div class="section-label fade-in">Voices from the Commons</div>';
+    voices.slice(0, 5).forEach(v => {
+      const text = v.text || v.content || '';
+      const prov = v.provenance || {};
+      const contrib = prov.contributor || {};
+      const name = (contrib.citation_consent === 'granted' && contrib.display_name)
+        ? contrib.display_name
+        : 'a visitor';
+      const contextParam = encodeURIComponent(text);
+      html += `<div class="visitor-voice-item fade-in">
+        <div class="visitor-voice-text">${esc(text)}</div>
+        <div class="visitor-voice-attribution">— ${esc(name)} · ${timeAgo(v.surfaced_at || v.created_at)}</div>
+        ${contextParam ? '<a class="item-enter" href="/?context=' + contextParam + '">enter this thought →</a>' : ''}
       </div>`;
     });
     html += '<div class="breath"></div>';
@@ -959,6 +1067,7 @@ async function loadBrowseCategory(name) {
         ${mentions ? ' · mentioned ' + mentions + ' time' + (mentions !== 1 ? 's' : '') : ''}
       </div>
       <div class="entry-attribution">${isSenna ? 'Synthesized by Senna' : attributionText(e)}</div>
+      ${contestedHtml(e)}
     </div>`;
   });
 

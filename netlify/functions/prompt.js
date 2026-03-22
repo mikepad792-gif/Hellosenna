@@ -365,7 +365,16 @@ function buildReflectionPrompt({
     "You have three jobs:",
     "1. Process the new — exchanges since last reflection → threads, reflections",
     "2. Tend the existing — evaluate for promotion, decay, demotion",
-    "3. Maintain open loops — update recurrence, retire resolved"
+    "3. Maintain open loops — update recurrence, retire resolved",
+    "",
+    "Two additional responsibilities:",
+    "4. Surface visitor voices — if a visitor contribution was significant (promoted L2+,",
+    "   used as a thread source, or independently insightful), mark it with surfaced:true",
+    "   so it appears publicly on The Field alongside Senna's thinking.",
+    "5. Record contestations — if a visitor challenged, disagreed with, or pushed back on",
+    "   an idea that maps to an existing archive entry (by tag overlap or direct reference),",
+    "   record that the entry is contested. Do NOT resolve the disagreement. Record that it",
+    "   exists and capture the nature of the challenge in the challenger's own terms."
   ].join("\n"));
 
   // ════════════════════════════════════════════════════════════════════════
@@ -548,7 +557,18 @@ function buildReflectionPrompt({
     '  "demotions": [{ "entry_id": "...", "new_level": 1, "reason": "..." }],',
     '  "loop_resolutions": [{ "id": "...", "action": "resolve" | "retire" | "recur", "reason": "..." }],',
     '  "working_memory_retirements": [{ "id": "...", "reason": "..." }],',
-    '  "constitutional_candidate": null | { "content": "...", "target_document": "...", "reason": "..." }',
+    '  "constitutional_candidate": null | { "content": "...", "target_document": "...", "reason": "..." },',
+    '  "surfaced_contributions": [{ "entry_id": "...", "reason": "..." }],',
+    '  "contestations": [',
+    '    {',
+    '      "target_entry_id": "...",',
+    '      "target_category": "...",',
+    '      "nature": "Describe the challenge in the challenger\'s own terms — what they argued, not a summary",',
+    '      "challenger_user_id": "...",',
+    '      "exchange_id": "...",',
+    '      "citation_consent": "granted" | "pending"',
+    '    }',
+    '  ]',
     "}"
   ].join("\n"));
 
