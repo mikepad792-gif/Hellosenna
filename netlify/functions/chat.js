@@ -422,9 +422,15 @@ exports.handler = async (event) => {
     // This is spec-compliant (Part 10.1: "keyword matching against user_text")
     // but means retrieval is blind to topic buildup across earlier messages.
     const userMessages = messages.filter((m) => m.role === "user");
-    const userText = userMessages.length > 0
+    // Normalize to string — content is an array of content blocks when files are attached
+    const rawContent = userMessages.length > 0
       ? userMessages[userMessages.length - 1].content
       : "";
+    const userText = typeof rawContent === "string"
+      ? rawContent
+      : Array.isArray(rawContent)
+        ? rawContent.filter((b) => b.type === "text").map((b) => b.text).join(" ")
+        : "";
 
     if (!userText) {
       return {
@@ -461,13 +467,7 @@ exports.handler = async (event) => {
     const archiveArrays = loadResults.slice(4); // parallel arrays matching categoriesToLoad
 
     // ── 2a. Select relevant repo papers (tag overlap only) ──
-    // userText may be an array of content blocks when files are attached
-    const textForRepo = typeof userText === "string"
-      ? userText
-      : Array.isArray(userText)
-        ? userText.filter((b) => b.type === "text").map((b) => b.text).join(" ")
-        : "";
-    const repoPapers = selectRepoPapers(repoIndex, textForRepo);
+    const repoPapers = selectRepoPapers(repoIndex, userText);
 
     // ── 3. Extract visitor profile ──
     let visitorProfile = null;
